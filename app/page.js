@@ -84,6 +84,7 @@ export default function Home() {
     alert("✅ تم تسجيل الفاتورة بنجاح!");
   };
 
+  // 🟢 إصلاح كامل لرابط المشاركة عبر الواتساب لتفادي 404
   const sendWhatsAppNotification = (type, data = {}) => {
     let text = '';
     const cleanPhone = custodyFund.phone ? custodyFund.phone.replace(/[^0-9]/g, '') : '';
@@ -96,8 +97,11 @@ export default function Home() {
       text = `🧾 *إشعار فاتورة رقم ${data.invoiceNumber}*\n\n🏢 المورد: ${data.vendor || 'مباشر'}\n💵 القيمة: ${data.amount} ${custodyFund.currency}\n📊 الصافي المتبقي بالعهدة: ${remainingBalance} ${custodyFund.currency}`;
     }
 
-    const base = cleanPhone ? `[suspicious link removed]{cleanPhone}?text=` : `[suspicious link removed]`;
-    window.open(base + encodeURIComponent(text), '_blank');
+    const waUrl = cleanPhone 
+      ? `[suspicious link removed]{cleanPhone}&text=${encodeURIComponent(text)}`
+      : `[suspicious link removed]{encodeURIComponent(text)}`;
+
+    window.open(waUrl, '_blank');
   };
 
   return (
