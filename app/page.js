@@ -2,10 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState('custody'); // custody | delegate | payroll
+// أيقونة الواتساب الرسمية SVG
+const WhatsAppIcon = ({ size = 18, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} style={{ verticalAlign: 'middle', marginLeft: '6px' }}>
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+  </svg>
+);
 
-  // بيانات العهدة المفتوحة
+export default function Home() {
+  const [activeTab, setActiveTab] = useState('custody');
+
   const [custodyFund, setCustodyFund] = useState({
     amount: 50000,
     currency: 'LYD',
@@ -19,7 +25,6 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // نموذج الفاتورة
   const [formData, setFormData] = useState({
     id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
     vendor: '', description: '', amount: '', category: 'CWIP - أصول قيد التنفيذ',
@@ -28,7 +33,6 @@ export default function Home() {
 
   const [isEditing, setIsEditing] = useState(false);
 
-  // حفظ واسترجاع البيانات محلياً
   useEffect(() => {
     const savedFund = localStorage.getItem('cement_fund');
     if (savedFund) setCustodyFund(JSON.parse(savedFund));
@@ -50,7 +54,6 @@ export default function Home() {
   const totalSpent = invoices.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
-  // رفع مرفق الفاتورة
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -62,7 +65,6 @@ export default function Home() {
     }
   };
 
-  // إضافة أو تعديل فاتورة
   const handleSubmitInvoice = (e) => {
     e.preventDefault();
     if (!formData.invoiceNumber || !formData.amount) return alert("يرجى إدخال رقم الفاتورة والمبلغ!");
@@ -82,81 +84,54 @@ export default function Home() {
     alert("✅ تم تسجيل الفاتورة بنجاح!");
   };
 
-  // أرشفة العهدة
-  const handleCloseAndArchive = () => {
-    if (confirm(`هل أنت متأكد من إغلاق العهدة (${custodyFund.custodyNo}) وأرشفتها؟`)) {
-      const record = {
-        id: Date.now().toString(), custodyNo: custodyFund.custodyNo, recipient: custodyFund.recipient,
-        totalAmount: custodyFund.amount, spentAmount: totalSpent, remainingAmount: remainingBalance,
-        currency: custodyFund.currency, closedAt: new Date().toLocaleDateString('ar-LY'), invoicesList: [...invoices]
-      };
-      const newHistory = [record, ...custodyHistory];
-      setCustodyHistory(newHistory);
-      setCustodyFund({ amount: 0, currency: 'LYD', recipient: '', phone: '', custodyNo: `CUS-2026-0${newHistory.length + 1}` });
-      setInvoices([]);
-      alert("✅ تم إغلاق العهدة وأرشفتها بنجاح!");
-    }
-  };
-
-  // إعادة فتح عهدة مؤرشفة
-  const handleReopenCustody = (rec) => {
-    setCustodyHistory(prev => prev.filter(r => r.id !== rec.id));
-    setCustodyFund({ amount: rec.totalAmount, currency: rec.currency, recipient: rec.recipient, phone: rec.phone || '', custodyNo: rec.custodyNo });
-    setInvoices(rec.invoicesList || []);
-    alert(`🔓 تم فتح العهدة (${rec.custodyNo}) بنجاح للتعديل!`);
-  };
-
-  // 📱 إشعارات الواتساب التلقائية بنقرة زر
   const sendWhatsAppNotification = (type, data = {}) => {
     let text = '';
     const cleanPhone = custodyFund.phone ? custodyFund.phone.replace(/[^0-9]/g, '') : '';
     
     if (type === 'NEW_CUSTODY') {
-      text = `📢 *إشعار تنزيل عهدة جديدة*\n\n👤 الأخ: ${custodyFund.recipient}\n🔢 رقم العهدة: ${custodyFund.custodyNo}\n💰 قيمة العهدة: ${custodyFund.amount} ${custodyFund.currency}\n📅 التاريخ: ${new Date().toLocaleDateString('ar-LY')}\n\nيرجى تسليم الفواتير أولاً بأول عبر المنظومة.`;
-    } else if (type === 'INVOICE_ADDED') {
-      text = `🧾 *إشعار قيد فاتورة جديد*\n\n👤 المسؤول: ${custodyFund.recipient}\n🔢 رقم الفاتورة: ${data.invoiceNumber}\n🏢 المورد: ${data.vendor || 'مباشر'}\n💵 القيمة: ${data.amount} ${custodyFund.currency}\n📊 الصافي المتبقي من العهدة: ${remainingBalance - parseFloat(data.amount)} ${custodyFund.currency}`;
+      text = `📢 *إشعار استلام عهدة جديدة*\n\n👤 الأخ: ${custodyFund.recipient}\n🔢 رقم العهدة: ${custodyFund.custodyNo}\n💰 القيمة: ${custodyFund.amount} ${custodyFund.currency}\n📅 التاريخ: ${new Date().toLocaleDateString('ar-LY')}`;
     } else if (type === 'FULL_REPORT') {
-      text = `📋 *كشف تسوية العهدة المالية (${custodyFund.custodyNo})*\n\n👤 المسؤول: ${custodyFund.recipient}\n💰 قيمة العهدة الأصلية: ${custodyFund.amount} ${custodyFund.currency}\n🧾 إجمالي المصروفات: ${totalSpent} ${custodyFund.currency}\n💵 المتبقي نقدياً: ${remainingBalance} ${custodyFund.currency}\n🔢 عدد الفواتير المسجلة: ${invoices.length}`;
+      text = `📋 *تقرير تسوية العهدة (${custodyFund.custodyNo})*\n\n👤 المسؤول: ${custodyFund.recipient}\n💰 إجمالي العهدة: ${custodyFund.amount} ${custodyFund.currency}\n🧾 المصروفات: ${totalSpent} ${custodyFund.currency}\n💵 الصافي المتبقي: ${remainingBalance} ${custodyFund.currency}`;
+    } else if (type === 'SINGLE_INVOICE') {
+      text = `🧾 *إشعار فاتورة رقم ${data.invoiceNumber}*\n\n🏢 المورد: ${data.vendor || 'مباشر'}\n💵 القيمة: ${data.amount} ${custodyFund.currency}\n📊 الصافي المتبقي بالعهدة: ${remainingBalance} ${custodyFund.currency}`;
     }
 
-    const url = cleanPhone ? `[suspicious link removed]{cleanPhone}?text=${encodeURIComponent(text)}` : `[suspicious link removed]{encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    const base = cleanPhone ? `[suspicious link removed]{cleanPhone}?text=` : `[suspicious link removed]`;
+    window.open(base + encodeURIComponent(text), '_blank');
   };
 
   return (
     <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif', direction: 'rtl', maxWidth: '1000px', margin: '0 auto' }}>
       
-      {/* رأس الصفحة */}
       <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '18px', borderRadius: '12px', marginBottom: '15px', textAlign: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '20px' }}>🏢 منظومة العهدة المالية والمصروفات المباشرة</h1>
-        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>مشروع مصنع الأسمنت - التتبع الحسابي وإشعارات الواتساب</p>
+        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>إدارة العهد المباشرة وتنبيهات الواتساب الفورية</p>
       </header>
 
-      {/* التبويبات الرئيسية */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-        <button onClick={() => setActiveTab('custody')} style={{ flex: 1, padding: '10px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'custody' ? '#2563eb' : '#e2e8f0', color: activeTab === 'custody' ? 'white' : '#1e293b' }}>🏛️ لوحة العهدة والإدارة</button>
-        <button onClick={() => setActiveTab('delegate')} style={{ flex: 1, padding: '10px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'delegate' ? '#16a34a' : '#e2e8f0', color: activeTab === 'delegate' ? 'white' : '#1e293b' }}>📱 واجهة المندوب / الموقع</button>
+        <button onClick={() => setActiveTab('custody')} style={{ flex: 1, padding: '10px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'custody' ? '#2563eb' : '#e2e8f0', color: activeTab === 'custody' ? 'white' : '#1e293b' }}>🏛️ لوحة التحكم والإدارة</button>
+        <button onClick={() => setActiveTab('delegate')} style={{ flex: 1, padding: '10px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'delegate' ? '#16a34a' : '#e2e8f0', color: activeTab === 'delegate' ? 'white' : '#1e293b' }}>📱 واجهة المندوب / تسجيل فواتير</button>
       </div>
 
-      {/* TABS CONTENT */}
       {activeTab === 'custody' ? (
         <div>
-          {/* شريط معلومات العهدة */}
           <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #cbd5e1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#1e293b' }}>📋 العهدة الحالية: {custodyFund.custodyNo}</h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>المسؤول: <strong>{custodyFund.recipient || 'غير محدد'}</strong> {custodyFund.phone && `(${custodyFund.phone})`}</span>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>المسؤول: <strong>{custodyFund.recipient}</strong></span>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button onClick={() => sendWhatsAppNotification('FULL_REPORT')} style={{ padding: '8px 12px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>📱 إرسال تقرير بالواتساب</button>
-                <button onClick={() => sendWhatsAppNotification('NEW_CUSTODY')} style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>📲 إشعار استلام عهدة</button>
+                <button onClick={() => sendWhatsAppNotification('FULL_REPORT')} style={{ padding: '8px 14px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                  <WhatsAppIcon /> إرسال تقرير بالواتساب
+                </button>
+                <button onClick={() => sendWhatsAppNotification('NEW_CUSTODY')} style={{ padding: '8px 14px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                  <WhatsAppIcon /> إشعار عهدة جديدة
+                </button>
                 <button onClick={() => setShowFundModal(!showFundModal)} style={{ padding: '8px 12px', backgroundColor: '#475569', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>⚙️ تخصيص</button>
-                <button onClick={handleCloseAndArchive} style={{ padding: '8px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🔒 أرشفة</button>
               </div>
             </div>
 
-            {/* نافذة تخصيص العهدة */}
             {showFundModal && (
               <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', marginTop: '12px', border: '1px solid #cbd5e1' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
@@ -169,14 +144,13 @@ export default function Home() {
             )}
           </div>
 
-          {/* ملخص الأرقام */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '8px', borderRight: '4px solid #2563eb' }}>
               <span style={{ fontSize: '12px', color: '#64748b' }}>إجمالي العهدة</span>
               <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{(custodyFund.amount || 0).toLocaleString()} {custodyFund.currency}</div>
             </div>
             <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '8px', borderRight: '4px solid #ef4444' }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>المصروفات المسجلة</span>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>المصروفات</span>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ef4444' }}>{totalSpent.toLocaleString()} {custodyFund.currency}</div>
             </div>
             <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '8px', borderRight: '4px solid #10b981' }}>
@@ -185,8 +159,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* جدول الفواتير */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
@@ -195,7 +168,7 @@ export default function Home() {
                   <th style={{ padding: '8px' }}>المورد</th>
                   <th style={{ padding: '8px' }}>المبلغ</th>
                   <th style={{ padding: '8px' }}>المرفق</th>
-                  <th style={{ padding: '8px', textAlign: 'center' }}>إجراءات</th>
+                  <th style={{ padding: '8px', textAlign: 'center' }}>مشاركة واتساب</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,8 +183,9 @@ export default function Home() {
                       <td style={{ padding: '8px', fontWeight: 'bold', color: '#dc2626' }}>{inv.amount?.toLocaleString()} {custodyFund.currency}</td>
                       <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض الصورة</a> : 'لا يوجد'}</td>
                       <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <button onClick={() => { setFormData(inv); setIsEditing(true); setActiveTab('delegate'); }} style={{ padding: '3px 6px', marginLeft: '4px' }}>✏️</button>
-                        <button onClick={() => setInvoices(prev => prev.filter(i => i.id !== inv.id))} style={{ padding: '3px 6px', color: 'red' }}>🗑️</button>
+                        <button onClick={() => sendWhatsAppNotification('SINGLE_INVOICE', inv)} style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                          <WhatsAppIcon size={14} /> مشاركة
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -219,65 +193,34 @@ export default function Home() {
               </tbody>
             </table>
           </div>
-
-          {/* الأرشيف */}
-          {custodyHistory.length > 0 && (
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <h4 style={{ margin: '0 0 10px 0' }}>📦 أرشيف العهد المغلقة ({custodyHistory.length})</h4>
-              {custodyHistory.map(rec => (
-                <div key={rec.id} style={{ padding: '8px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                  <span><strong>{rec.custodyNo}</strong> ({rec.recipient}) - المصروف: {rec.spentAmount} {rec.currency}</span>
-                  <button onClick={() => handleReopenCustody(rec)} style={{ padding: '4px 8px', backgroundColor: '#d97706', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>🔓 إعادة فتح العهدة</button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       ) : (
-        /* واجهة المندوب / تنزيل الفواتير من الجوال */
         <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير والمرفقات من الجوال</h3>
-          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '15px' }}>يمكن للمندوب في الموقع رفع صور الفواتير وتوثيق المشتريات مباشرة لتحديث الصافي المتبقي.</p>
-
+          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير والمرفقات</h3>
           <form onSubmit={handleSubmitInvoice} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>رقم الفاتورة / الإيصال</label>
               <input type="text" placeholder="مثال: INV-1002" value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>تاريخ الفاتورة</label>
               <input type="date" value={formData.invoiceDate} onChange={e => setFormData({...formData, invoiceDate: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>اسم المورد / المحل</label>
               <input type="text" placeholder="مثال: شركة المواد الجاهزة" value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
             </div>
-
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>المبلغ الإجمالي ({custodyFund.currency})</label>
               <input type="number" step="0.01" placeholder="مثال: 450" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
             </div>
-
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>تصنيف النفقة</label>
-              <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
-                <option value="CWIP - أصول قيد التنفيذ">CWIP - أصول قيد التنفيذ (معدات ومباني)</option>
-                <option value="مواد تشغيلية وتجهيزات">مواد تشغيلية وتجهيزات</option>
-                <option value="نقل ولوجستيات">نقل ولوجستيات</option>
-                <option value="سُلف ومصروفات عمالة">سُلف ومصروفات عمالة</option>
-              </select>
-            </div>
-
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>📷 تصوير / رفع الفاتورة</label>
               <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '6px', fontSize: '11px', marginTop: '4px' }} />
             </div>
-
             <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
               <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-                {isEditing ? '✏️ حفظ التعديلات' : '💾 تسجيل الفاتورة وتحديث الصافي'}
+                💾 تسجيل الفاتورة وتحديث الصافي
               </button>
             </div>
           </form>
