@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-// إعدادات الربط السحابي المباشر مع Supabase
 const SUPABASE_URL = '[suspicious link removed]';
 const SUPABASE_KEY = 'sb_publishable_sFxpgljPq4vJWw54LtX2iA_hQWwqdlD';
 
@@ -36,57 +35,58 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
+    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
     vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
     attachmentName: '', attachmentData: ''
   });
 
-  // جلب البيانات مباشرة من Supabase (بدون localStorage)
   const fetchCloudData = async () => {
     try {
-      const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*&order=created_at.desc`, { headers: reqHeaders });
+      // طلب جالب الفواتير المباشر السريع بدون اشتراط ترتيب بحقول مفقودة
+      const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*`, { headers: reqHeaders });
       if (invRes.ok) {
         const invData = await invRes.json();
         setInvoices(invData.map(item => ({
-          id: item.id,
-          invoiceNumber: item.invoice_number,
-          invoiceDate: item.invoice_date,
-          vendor: item.vendor,
+          id: item.id || Date.now().toString(),
+          invoiceNumber: item.invoice_number || item.invoiceNumber || '',
+          invoiceDate: item.invoice_date || item.invoiceDate || '',
+          vendor: item.vendor || '',
           amount: parseFloat(item.amount) || 0,
-          category: item.category,
-          attachmentData: item.attachment_data
+          category: item.category || 'عام',
+          attachmentData: item.attachment_data || ''
         })));
         setSyncStatus('🟢 متصل بالسحابة ومترابط حياً بين الكمبيوتر والجوال');
       } else {
         setSyncStatus(`⚠️ تعذر الجلب من السحابة (${invRes.status})`);
       }
 
-      const fundRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_fund?select=*&id=eq.1`, { headers: reqHeaders });
+      const fundRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_fund?select=*`, { headers: reqHeaders });
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (fundData && fundData.length > 0) {
+          const first = fundData;
           setCustodyFund({
-            amount: parseFloat(fundData[0].amount) || 50000,
-            currency: fundData[0].currency || 'LYD',
-            recipient: fundData[0].recipient || 'أحمد الصالحي',
-            phone: fundData[0].phone || '',
-            custodyNo: fundData[0].custody_no || 'CUS-2026-001'
+            amount: parseFloat(first.amount) || 50000,
+            currency: first.currency || 'LYD',
+            recipient: first.recipient || 'أحمد الصالحي',
+            phone: first.phone || '',
+            custodyNo: first.custody_no || first.custodyNo || 'CUS-2026-001'
           });
         }
       }
 
-      const histRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_history?select=*&order=created_at.desc`, { headers: reqHeaders });
+      const histRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_history?select=*`, { headers: reqHeaders });
       if (histRes.ok) {
         const histData = await histRes.json();
         setCustodyHistory(histData.map(h => ({
           id: h.id,
-          custodyNo: h.custody_no,
+          custodyNo: h.custody_no || h.custodyNo,
           recipient: h.recipient,
-          totalAmount: parseFloat(h.total_amount) || 0,
-          spentAmount: parseFloat(h.spent_amount) || 0,
-          remainingAmount: parseFloat(h.remaining_amount) || 0,
-          currency: h.currency,
-          closedAt: h.closed_at
+          totalAmount: parseFloat(h.total_amount || h.totalAmount) || 0,
+          spentAmount: parseFloat(h.spent_amount || h.spentAmount) || 0,
+          remainingAmount: parseFloat(h.remaining_amount || h.remainingAmount) || 0,
+          currency: h.currency || 'LYD',
+          closedAt: h.closed_at || h.closedAt || ''
         })));
       }
     } catch (err) {
@@ -104,7 +104,7 @@ export default function Home() {
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.;
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -139,13 +139,13 @@ export default function Home() {
       if (res.ok) {
         alert("✅ تم قيد الفاتورة وتزامنها سحابياً فوراً!");
         setFormData({
-          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
+          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
           vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
           attachmentName: '', attachmentData: ''
         });
         fetchCloudData();
       } else {
-        alert("⚠️ فشل التزامن السحابي");
+        alert("⚠️ فشل حفظ الفاتورة في السحابة");
       }
     } catch (err) {
       alert("خطأ اتصال: " + err.message);
@@ -172,7 +172,7 @@ export default function Home() {
           body: JSON.stringify(archivePayload)
         });
 
-        await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=gt.0`, { method: 'DELETE', headers: reqHeaders });
+        await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=neq.0`, { method: 'DELETE', headers: reqHeaders });
         
         fetchCloudData();
         alert("✅ تم أرشفة العهدة بنجاح وبدء عهدة جديدة!");
