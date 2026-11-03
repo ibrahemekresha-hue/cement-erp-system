@@ -12,7 +12,7 @@ const reqHeaders = {
   'Prefer': 'return=representation'
 };
 
-export default function Home() {
+export default function CustodyPage() {
   const [activeTab, setActiveTab] = useState('custody');
   const [syncStatus, setSyncStatus] = useState('جاري الاتصال بالسحابة...');
 
@@ -45,19 +45,21 @@ export default function Home() {
       const invRes = await fetch(SUPABASE_URL + '/rest/v1/invoices?select=*', { headers: reqHeaders });
       if (invRes.ok) {
         const invData = await invRes.json();
-        const mappedInvoices = invData.map(function(item) {
-          return {
-            id: item.id || String(Date.now()),
-            invoiceNumber: item.invoice_number || item.invoiceNumber || '',
-            invoiceDate: item.invoice_date || item.invoiceDate || '',
-            vendor: item.vendor || '',
-            amount: parseFloat(item.amount) || 0,
-            category: item.category || 'عام',
-            attachmentData: item.attachment_data || ''
-          };
-        });
-        setInvoices(mappedInvoices);
-        setSyncStatus('🟢 متصل بالسحابة ومترابط حياً بين الكمبيوتر والجوال');
+        if (Array.isArray(invData)) {
+          const mapped = invData.map(function(item) {
+            return {
+              id: String(item.id || Date.now()),
+              invoiceNumber: String(item.invoice_number || item.invoiceNumber || ''),
+              invoiceDate: String(item.invoice_date || item.invoiceDate || ''),
+              vendor: String(item.vendor || ''),
+              amount: parseFloat(item.amount) || 0,
+              category: String(item.category || 'عام'),
+              attachmentData: String(item.attachment_data || '')
+            };
+          });
+          setInvoices(mapped);
+          setSyncStatus('🟢 متصل بالسحابة ومترابط حياً بين الكمبيوتر والجوال');
+        }
       } else {
         setSyncStatus('⚠️ تعذر الجلب من السحابة (' + invRes.status + ')');
       }
@@ -65,14 +67,14 @@ export default function Home() {
       const fundRes = await fetch(SUPABASE_URL + '/rest/v1/custody_fund?select=*', { headers: reqHeaders });
       if (fundRes.ok) {
         const fundData = await fundRes.json();
-        if (fundData && fundData.length > 0) {
+        if (Array.isArray(fundData) && fundData.length > 0) {
           const first = fundData;
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
-            currency: first.currency || 'LYD',
-            recipient: first.recipient || 'أحمد الصالحي',
-            phone: first.phone || '',
-            custodyNo: first.custody_no || first.custodyNo || 'CUS-2026-001'
+            currency: String(first.currency || 'LYD'),
+            recipient: String(first.recipient || 'أحمد الصالحي'),
+            phone: String(first.phone || ''),
+            custodyNo: String(first.custody_no || first.custodyNo || 'CUS-2026-001')
           });
         }
       }
@@ -80,19 +82,21 @@ export default function Home() {
       const histRes = await fetch(SUPABASE_URL + '/rest/v1/custody_history?select=*', { headers: reqHeaders });
       if (histRes.ok) {
         const histData = await histRes.json();
-        const mappedHist = histData.map(function(h) {
-          return {
-            id: h.id,
-            custodyNo: h.custody_no || h.custodyNo,
-            recipient: h.recipient,
-            totalAmount: parseFloat(h.total_amount || h.totalAmount) || 0,
-            spentAmount: parseFloat(h.spent_amount || h.spentAmount) || 0,
-            remainingAmount: parseFloat(h.remaining_amount || h.remainingAmount) || 0,
-            currency: h.currency || 'LYD',
-            closedAt: h.closed_at || h.closedAt || ''
-          };
-        });
-        setCustodyHistory(mappedHist);
+        if (Array.isArray(histData)) {
+          const mappedHist = histData.map(function(h) {
+            return {
+              id: String(h.id || Date.now()),
+              custodyNo: String(h.custody_no || h.custodyNo || ''),
+              recipient: String(h.recipient || ''),
+              totalAmount: parseFloat(h.total_amount || h.totalAmount) || 0,
+              spentAmount: parseFloat(h.spent_amount || h.spentAmount) || 0,
+              remainingAmount: parseFloat(h.remaining_amount || h.remainingAmount) || 0,
+              currency: String(h.currency || 'LYD'),
+              closedAt: String(h.closed_at || h.closedAt || '')
+            };
+          });
+          setCustodyHistory(mappedHist);
+        }
       }
     } catch (err) {
       setSyncStatus('❌ فشل الاتصال بالسحابة');
@@ -114,7 +118,7 @@ export default function Home() {
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
   function handleFileChange(e) {
-    if (e && e.target && e.target.files && e.target.files) {
+    if (e && e.target && e.target.files && e.target.files.length > 0) {
       const file = e.target.files;
       const reader = new FileReader();
       reader.onloadend = function() {
@@ -128,7 +132,7 @@ export default function Home() {
             amount: prev.amount,
             category: prev.category,
             attachmentName: file.name,
-            attachmentData: reader.result
+            attachmentData: String(reader.result || '')
           };
         });
       };
