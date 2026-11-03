@@ -16,7 +16,8 @@ const DEFAULT_FUND = {
   amount: 50000,
   currency: 'LYD',
   recipient: 'أحمد الصالحي',
-  ownerPhone: '218910000000', // رقم صاحب المنظومة / الإدارة
+  recipientPhone: '',
+  ownerPhone: '',
   custodyNo: 'CUS-2026-001'
 };
 
@@ -87,7 +88,8 @@ export default function Home() {
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
             recipient: String(first.recipient || 'أحمد الصالحي'),
-            ownerPhone: String(first.phone || first.owner_phone || ''),
+            recipientPhone: String(first.phone || first.recipient_phone || ''),
+            ownerPhone: String(first.owner_phone || ''),
             custodyNo: String(first.custody_no || first.custodyNo || 'CUS-2026-001')
           });
         }
@@ -136,7 +138,8 @@ export default function Home() {
       id: "1",
       custody_no: custodyFund.custodyNo,
       recipient: custodyFund.recipient,
-      phone: custodyFund.ownerPhone,
+      phone: custodyFund.recipientPhone,
+      owner_phone: custodyFund.ownerPhone,
       amount: parseFloat(custodyFund.amount) || 0,
       currency: custodyFund.currency
     };
@@ -152,7 +155,7 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("✅ تم حفظ رقم صاحب المنظومة وسند العهدة سحابياً بنجاح!");
+        alert("✅ تم حفظ أرقام الجوال وبيانات العهدة سحابياً بنجاح!");
         setShowFundModal(false);
         fetchCloudData();
       } else {
@@ -161,7 +164,7 @@ export default function Home() {
           headers: reqHeaders,
           body: JSON.stringify(payload)
         });
-        alert("✅ تم التحديث سحابياً بنجاح!");
+        alert("✅ تم تحديث بيانات العهدة وأرقام الجوال سحابياً!");
         setShowFundModal(false);
         fetchCloudData();
       }
@@ -265,12 +268,19 @@ export default function Home() {
   function sendWhatsAppNotification(type, data) {
     const itemData = data || {};
     let text = '';
-    const formattedPhone = cleanPhoneNumber(custodyFund.ownerPhone);
+    
+    // إشعار العهدة الجديدة يذهب لمسؤول العهدة (المستلم)، بينما التقرير المالي والفواتير تذهب لصاحب المنظومة/الإدارة
+    let targetPhone = custodyFund.ownerPhone;
+    if (type === 'NEW_CUSTODY') {
+      targetPhone = custodyFund.recipientPhone || custodyFund.ownerPhone;
+    }
+    
+    const formattedPhone = cleanPhoneNumber(targetPhone);
 
     if (type === 'NEW_CUSTODY') {
-      text = '📢 *إشعار استلام عهدة جديدة*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n🔢 رقم العهدة: ' + custodyFund.custodyNo + '\n💰 القيمة: ' + custodyFund.amount + ' ' + custodyFund.currency + '\n📅 التاريخ: ' + new Date().toLocaleDateString('ar-LY');
+      text = '📢 *إشعار استلام عهدة جديدة*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n🔢 رقم العهدة: ' + custodyFund.custodyNo + '\n💰 القيمة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n📅 التاريخ: ' + new Date().toLocaleDateString('ar-LY');
     } else if (type === 'FULL_REPORT') {
-      text = '📋 *تقرير تسوية العهدة (' + custodyFund.custodyNo + ')*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n💰 إجمالي العهدة: ' + custodyFund.amount + ' ' + custodyFund.currency + '\n🧾 المصروفات: ' + totalSpent.toLocaleString() + ' ' + custodyFund.currency + '\n💵 الصافي المتبقي: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
+      text = '📋 *تقرير تسوية العهدة (' + custodyFund.custodyNo + ')*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n💰 إجمالي العهدة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n🧾 المصروفات: ' + totalSpent.toLocaleString() + ' ' + custodyFund.currency + '\n💵 الصافي المتبقي: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     } else if (type === 'SINGLE_INVOICE') {
       text = '🧾 *إشعار فاتورة رقم ' + itemData.invoiceNumber + '*\n\n🏢 المورد: ' + (itemData.vendor || 'مباشر') + '\n💵 القيمة: ' + itemData.amount + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     }
@@ -303,7 +313,9 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#1e293b' }}>📋 العهدة الحالية: {custodyFund.custodyNo}</h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>مسؤول العهدة: <strong>{custodyFund.recipient}</strong></span>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>
+                  مسؤول العهدة: <strong>{custodyFund.recipient}</strong> {custodyFund.recipientPhone ? '(' + custodyFund.recipientPhone + ')' : ''}
+                </span>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button onClick={function() { sendWhatsAppNotification('FULL_REPORT'); }} style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
@@ -319,18 +331,22 @@ export default function Home() {
 
             {showFundModal && (
               <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', marginTop: '12px', border: '1px solid #cbd5e1' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>اسم مسؤول العهدة (المندوب)</label>
-                    <input type="text" placeholder="اسم المسؤول" value={custodyFund.recipient} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: e.target.value, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <input type="text" placeholder="اسم المسؤول" value={custodyFund.recipient} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: e.target.value, recipientPhone: custodyFund.recipientPhone, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>رقم صاحب المنظومة / الإدارة (واتساب)</label>
-                    <input type="text" placeholder="مثال: 0910000000 أو 218910000000" value={custodyFund.ownerPhone} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: custodyFund.recipient, ownerPhone: e.target.value, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>📱 جوال مسؤول العهدة (واتساب)</label>
+                    <input type="text" placeholder="مثال: 0910000000" value={custodyFund.recipientPhone} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: e.target.value, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>🏢 جوال صاحب المنظومة / الإدارة</label>
+                    <input type="text" placeholder="مثال: 0920000000" value={custodyFund.ownerPhone} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: custodyFund.recipientPhone, ownerPhone: e.target.value, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
                   </div>
                   <div>
                     <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>مبلغ العهدة الكلي</label>
-                    <input type="number" placeholder="مبلغ العهدة" value={custodyFund.amount} onChange={function(e) { setCustodyFund({ amount: parseFloat(e.target.value) || 0, currency: custodyFund.currency, recipient: custodyFund.recipient, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <input type="number" placeholder="مبلغ العهدة" value={custodyFund.amount} onChange={function(e) { setCustodyFund({ amount: parseFloat(e.target.value) || 0, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: custodyFund.recipientPhone, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
                   </div>
                   <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '5px' }}>
                     <button onClick={handleSaveFund} style={{ padding: '8px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>💾 حفظ التعديلات سحابياً</button>
@@ -365,7 +381,7 @@ export default function Home() {
                   <th style={{ padding: '8px' }}>المورد</th>
                   <th style={{ padding: '8px' }}>المبلغ</th>
                   <th style={{ padding: '8px' }}>المرفق</th>
-                  <th style={{ padding: '8px', textAlign: 'center' }}>إرسال لصاحب المنظومة</th>
+                  <th style={{ padding: '8px', textAlign: 'center' }}>مشاركة بالواتساب</th>
                 </tr>
               </thead>
               <tbody>
@@ -432,13 +448,4 @@ export default function Home() {
               <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '6px', fontSize: '11px', marginTop: '4px' }} />
             </div>
             <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-              <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-                💾 تسجيل الفاتورة وتزامنها سحابياً فوراً
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
+              <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor:
