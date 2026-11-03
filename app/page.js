@@ -35,14 +35,13 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
+    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
     vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
     attachmentName: '', attachmentData: ''
   });
 
   const fetchCloudData = async () => {
     try {
-      // طلب جالب الفواتير المباشر السريع بدون اشتراط ترتيب بحقول مفقودة
       const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*`, { headers: reqHeaders });
       if (invRes.ok) {
         const invData = await invRes.json();
@@ -64,7 +63,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (fundData && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: first.currency || 'LYD',
@@ -104,7 +103,7 @@ export default function Home() {
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.;
+    const file = e.target.files && e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -139,7 +138,7 @@ export default function Home() {
       if (res.ok) {
         alert("✅ تم قيد الفاتورة وتزامنها سحابياً فوراً!");
         setFormData({
-          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
+          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
           vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
           attachmentName: '', attachmentData: ''
         });
@@ -284,7 +283,7 @@ export default function Home() {
                       <td style={{ padding: '8px', fontWeight: 'bold', color: '#dc2626' }}>{inv.amount?.toLocaleString()} {custodyFund.currency}</td>
                       <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض الصورة</a> : 'لا يوجد'}</td>
                       <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <button onClick={() => sendWhatsAppNotification('SINGLE_INVOICE', inv)} style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                        <button onClick={() => sendWhatsAppNotification('SINGLE_INVOICE', inv)} style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
                           <WhatsAppIcon size={14} /> مشاركة
                         </button>
                       </td>
