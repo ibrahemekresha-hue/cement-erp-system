@@ -42,6 +42,7 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
   const [formData, setFormData] = useState(DEFAULT_FORM);
 
+  // جلب البيانات من السحابة مباشرة بدون استخدام localStorage
   async function fetchCloudData() {
     try {
       const invRes = await fetch(SUPABASE_URL + '/rest/v1/invoices?select=*', { headers: reqHeaders });
@@ -70,7 +71,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData[0];
+          const first = fundData;
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -119,9 +120,10 @@ export default function Home() {
 
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
+  // تصحيح السطر 122 الخاص بقراءة المرفقات بأمان
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
+      const file = e.target.files;
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData({
