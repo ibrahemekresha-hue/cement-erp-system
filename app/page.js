@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-// إعدادات الربط السحابي المباشر مع Supabase
+// إعدادات الربط السحابي مع Supabase
 const SUPABASE_URL = '[suspicious link removed]';
 const SUPABASE_KEY = 'sb_publishable_sFxpgljPq4vJWw54LtX2iA_hQWwqdlD';
 
@@ -22,9 +22,8 @@ const WhatsAppIcon = ({ size = 18, color = "white" }) => (
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('custody');
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('جاري الاتصال...');
 
-  // بيانات العهدة
   const [custodyFund, setCustodyFund] = useState({
     amount: 50000,
     currency: 'LYD',
@@ -34,25 +33,23 @@ export default function Home() {
   });
 
   const [invoices, setInvoices] = useState([]);
+  const [custodyHistory, setCustodyHistory] = useState([]);
   const [showFundModal, setShowFundModal] = useState(false);
 
-  // نموذج الفاتورة
   const [formData, setFormData] = useState({
     id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
     vendor: '', description: '', amount: '', category: 'CWIP - أصول قيد التنفيذ',
     attachmentName: '', attachmentData: ''
   });
 
-  // جلب البيانات وتفعيل التزامن السحابي التلقائي
+  // جلب البيانات والتزامن السحابي
   const fetchCloudData = async () => {
     try {
-      setIsSyncing(true);
-      
-      // جلب الفواتير من السحابة
+      // 1. جلب الفواتير
       const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*&order=created_at.desc`, { headers: reqHeaders });
       if (invRes.ok) {
         const invData = await invRes.json();
-        const mappedInvoices = invData.map(item => ({
+        setInvoices(invData.map(item => ({
           id: item.id,
           invoiceNumber: item.invoice_number,
           invoiceDate: item.invoice_date,
@@ -60,11 +57,13 @@ export default function Home() {
           amount: parseFloat(item.amount) || 0,
           category: item.category,
           attachmentData: item.attachment_data
-        }));
-        setInvoices(mappedInvoices);
+        })));
+        setSyncStatus('🟢 متصل بالسحابة ومترابط حياً');
+      } else {
+        setSyncStatus(`⚠️ خطأ أمان بالسحابة (${invRes.status})`);
       }
 
-      // جلب تفاصيل العهدة من السحابة
+      // 2. جلب بيانات العهدة
       const fundRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_fund?select=*&id=eq.1`, { headers: reqHeaders });
       if (fundRes.ok) {
         const fundData = await fundRes.json();
@@ -73,22 +72,35 @@ export default function Home() {
             amount: parseFloat(fundData[0].amount) || 50000,
             currency: fundData[0].currency || 'LYD',
             recipient: fundData[0].recipient || 'أحمد الصالحي',
-            phone: fundData[0].phone || '218910000000',
+            phone: fundData[0].phone || '',
             custodyNo: fundData[0].custody_no || 'CUS-2026-001'
           });
         }
       }
+
+      // 3. جلب الأرشيف
+      const histRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_history?select=*&order=created_at.desc`, { headers: reqHeaders });
+      if (histRes.ok) {
+        const histData = await histRes.json();
+        setCustodyHistory(histData.map(h => ({
+          id: h.id,
+          custodyNo: h.custody_no,
+          recipient: h.recipient,
+          totalAmount: parseFloat(h.total_amount) || 0,
+          spentAmount: parseFloat(h.spent_amount) || 0,
+          remainingAmount: parseFloat(h.remaining_amount) || 0,
+          currency: h.currency,
+          closedAt: h.closed_at
+        })));
+      }
     } catch (err) {
-      console.error("خطأ في التزامن:", err);
-    } finally {
-      setIsSyncing(false);
+      setSyncStatus('❌ تعذر الاتصال بالسحابة');
     }
   };
 
-  // المزامنة الدورية كل 4 ثوانٍ لضمان بقاء الجوال والكمبيوتر متطابقين حياً
   useEffect(() => {
     fetchCloudData();
-    const interval = setInterval(fetchCloudData, 4000);
+    const interval = setInterval(fetchCloudData, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -107,7 +119,7 @@ export default function Home() {
     }
   };
 
-  // حفظ الفاتورة وتزامنها سحابياً فوراً
+  // تسجيل فاتورة جديدة
   const handleSubmitInvoice = async (e) => {
     e.preventDefault();
     if (!formData.invoiceNumber || !formData.amount) return alert("يرجى إدخال رقم الفاتورة والمبلغ!");
@@ -131,7 +143,7 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("✅ تم تسجيل الفاتورة وتزامنها مع السحابة بنجاح!");
+        alert("✅ تم قيد الفاتورة وتزامنها مع السحابة فوراً!");
         setFormData({
           id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
           vendor: '', description: '', amount: '', category: 'CWIP - أصول قيد التنفيذ',
@@ -139,52 +151,50 @@ export default function Home() {
         });
         fetchCloudData();
       } else {
-        alert("حدث خطأ في الحفظ السحابي، جاري المحاولة محلياً.");
+        alert("⚠️ فشل التزامن: تحقق من تنفيذ كود SQL في Supabase");
       }
     } catch (err) {
-      alert("تعذر الاتصال بالسحابة: " + err.message);
+      alert("خطأ في الاتصال: " + err.message);
     }
   };
 
-  // تحديث بيانات العهدة سحابياً
-  const handleSaveFund = async () => {
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/custody_fund?id=eq.1`, {
-        method: 'PATCH',
-        headers: reqHeaders,
-        body: JSON.stringify({
-          amount: custodyFund.amount,
-          recipient: custodyFund.recipient,
-          phone: custodyFund.phone
-        })
-      });
-      setShowFundModal(false);
-      alert("✅ تم تحديث بيانات العهدة سحابياً!");
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // أرشفة العهدة الحالية
+  const handleCloseAndArchive = async () => {
+    if (confirm(`هل أنت متأكد من إغلاق العهدة (${custodyFund.custodyNo}) وأرشفتها؟`)) {
+      const archivePayload = {
+        id: Date.now().toString(),
+        custody_no: custodyFund.custodyNo,
+        recipient: custodyFund.recipient,
+        total_amount: custodyFund.amount,
+        spent_amount: totalSpent,
+        remaining_amount: remainingBalance,
+        currency: custodyFund.currency,
+        closed_at: new Date().toLocaleDateString('ar-LY')
+      };
 
-  // حذف فاتورة سحابياً
-  const handleDeleteInvoice = async (id) => {
-    if (confirm("هل أنت متأكد من حذف هذه الفاتورة؟")) {
       try {
-        await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=eq.${id}`, {
-          method: 'DELETE',
-          headers: reqHeaders
+        await fetch(`${SUPABASE_URL}/rest/v1/custody_history`, {
+          method: 'POST',
+          headers: reqHeaders,
+          body: JSON.stringify(archivePayload)
         });
+
+        // مسح الفواتير الحالية للبدء بعهدة جديدة
+        await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=gt.0`, { method: 'DELETE', headers: reqHeaders });
+        
         fetchCloudData();
+        alert("✅ تم أرشفة العهدة بنجاح وبدء عهدة جديدة!");
       } catch (err) {
-        console.error(err);
+        alert("تعذر الأرشفة: " + err.message);
       }
     }
   };
 
-  // 🟢 إصلاح محكم لرابط الواتساب ليعمل دائماً بدون 404
+  // 🟢 إصلاح أزرار الواتساب لتضمين wa.me والتوافق التام
   const sendWhatsAppNotification = (type, data = {}) => {
     let text = '';
     const cleanPhone = custodyFund.phone ? custodyFund.phone.replace(/[^0-9]/g, '') : '';
-    
+
     if (type === 'NEW_CUSTODY') {
       text = `📢 *إشعار استلام عهدة جديدة*\n\n👤 الأخ: ${custodyFund.recipient}\n🔢 رقم العهدة: ${custodyFund.custodyNo}\n💰 القيمة: ${custodyFund.amount} ${custodyFund.currency}\n📅 التاريخ: ${new Date().toLocaleDateString('ar-LY')}`;
     } else if (type === 'FULL_REPORT') {
@@ -193,22 +203,20 @@ export default function Home() {
       text = `🧾 *إشعار فاتورة رقم ${data.invoiceNumber}*\n\n🏢 المورد: ${data.vendor || 'مباشر'}\n💵 القيمة: ${data.amount} ${custodyFund.currency}\n📊 الصافي المتبقي بالعهدة: ${remainingBalance} ${custodyFund.currency}`;
     }
 
-    const targetUrl = cleanPhone 
-      ? `[suspicious link removed]{cleanPhone}&text=${encodeURIComponent(text)}`
+    const waLink = cleanPhone 
+      ? `[suspicious link removed]{cleanPhone}?text=${encodeURIComponent(text)}`
       : `[suspicious link removed]{encodeURIComponent(text)}`;
 
-    window.open(targetUrl, '_blank');
+    window.open(waLink, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif', direction: 'rtl', maxWidth: '1000px', margin: '0 auto' }}>
       
-      {/* رأس الصفحة */}
-      <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '18px', borderRadius: '12px', marginBottom: '15px', textAlign: 'center', position: 'relative' }}>
+      {/* الرأس */}
+      <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '18px', borderRadius: '12px', marginBottom: '15px', textAlign: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '20px' }}>🏢 منظومة العهدة المالية والمصروفات المباشرة</h1>
-        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
-          تزامن حقيقي بين الجوال والكمبيوتر | {isSyncing ? '🔄 جاري التحديث السحابي...' : '🟢 متصل بالسحابة'}
-        </p>
+        <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>{syncStatus}</p>
       </header>
 
       {/* التبويبات */}
@@ -219,7 +227,7 @@ export default function Home() {
 
       {activeTab === 'custody' ? (
         <div>
-          {/* معلومات العهدة */}
+          {/* معلومات العهدة مع الأزرار وإعادة زر الأرشفة */}
           <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #cbd5e1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
@@ -227,13 +235,14 @@ export default function Home() {
                 <span style={{ fontSize: '13px', color: '#64748b' }}>المسؤول: <strong>{custodyFund.recipient}</strong> {custodyFund.phone && `(${custodyFund.phone})`}</span>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button onClick={() => sendWhatsAppNotification('FULL_REPORT')} style={{ padding: '8px 14px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
-                  <WhatsAppIcon /> إرسال تقرير بالواتساب
+                <button onClick={() => sendWhatsAppNotification('FULL_REPORT')} style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                  <WhatsAppIcon /> تقرير الواتساب
                 </button>
-                <button onClick={() => sendWhatsAppNotification('NEW_CUSTODY')} style={{ padding: '8px 14px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
-                  <WhatsAppIcon /> إشعار عهدة جديدة
+                <button onClick={() => sendWhatsAppNotification('NEW_CUSTODY')} style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
+                  <WhatsAppIcon /> إشعار عهدة
                 </button>
                 <button onClick={() => setShowFundModal(!showFundModal)} style={{ padding: '8px 12px', backgroundColor: '#475569', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>⚙️ تخصيص</button>
+                <button onClick={handleCloseAndArchive} style={{ padding: '8px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🔒 أرشفة</button>
               </div>
             </div>
 
@@ -243,13 +252,13 @@ export default function Home() {
                   <input type="text" placeholder="اسم المسؤول" value={custodyFund.recipient} onChange={e => setCustodyFund({...custodyFund, recipient: e.target.value})} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                   <input type="text" placeholder="رقم الهاتف (218...)" value={custodyFund.phone} onChange={e => setCustodyFund({...custodyFund, phone: e.target.value})} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                   <input type="number" placeholder="مبلغ العهدة" value={custodyFund.amount} onChange={e => setCustodyFund({...custodyFund, amount: parseFloat(e.target.value) || 0})} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-                  <button onClick={handleSaveFund} style={{ padding: '6px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '4px' }}>حفظ التعديلات سحابياً</button>
+                  <button onClick={() => setShowFundModal(false)} style={{ padding: '6px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '4px' }}>حفظ التعديلات</button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* الإحصائيات */}
+          {/* ملخص الأرقام */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '12px', borderRadius: '8px', borderRight: '4px solid #2563eb' }}>
               <span style={{ fontSize: '12px', color: '#64748b' }}>إجمالي العهدة</span>
@@ -265,8 +274,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* جدول الفواتير المحدث تلقائياً */}
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+          {/* جدول الفواتير */}
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', marginBottom: '15px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
               <thead style={{ backgroundColor: '#f1f5f9' }}>
                 <tr>
@@ -276,12 +285,11 @@ export default function Home() {
                   <th style={{ padding: '8px' }}>المبلغ</th>
                   <th style={{ padding: '8px' }}>المرفق</th>
                   <th style={{ padding: '8px', textAlign: 'center' }}>مشاركة واتساب</th>
-                  <th style={{ padding: '8px', textAlign: 'center' }}>حذف</th>
                 </tr>
               </thead>
               <tbody>
                 {invoices.length === 0 ? (
-                  <tr><td colSpan="7" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فواتير مسجلة سحابياً حالياً</td></tr>
+                  <tr><td colSpan="6" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فواتير مسجلة حالياً</td></tr>
                 ) : (
                   invoices.map(inv => (
                     <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -295,20 +303,30 @@ export default function Home() {
                           <WhatsAppIcon size={14} /> مشاركة
                         </button>
                       </td>
-                      <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <button onClick={() => handleDeleteInvoice(inv.id)} style={{ padding: '3px 6px', color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>🗑️</button>
-                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* قسم الأرشيف المحدث */}
+          {custodyHistory.length > 0 && (
+            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ margin: '0 0 10px 0' }}>📦 أرشيف العهد المغلقة ({custodyHistory.length})</h4>
+              {custodyHistory.map(rec => (
+                <div key={rec.id} style={{ padding: '8px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
+                  <span><strong>{rec.custodyNo}</strong> ({rec.recipient}) - المصروف: {rec.spentAmount} {rec.currency} - الصافي: {rec.remainingAmount} {rec.currency}</span>
+                  <span style={{ color: '#64748b' }}>📅 {rec.closedAt}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
-        /* واجهة المندوب بالجوال */
+        /* واجهة المندوب للجوال */
         <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير من الجوال (مزامنة فورية)</h3>
+          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير من الجوال (تزامن سحابي)</h3>
           <form onSubmit={handleSubmitInvoice} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>رقم الفاتورة / الإيصال</label>
