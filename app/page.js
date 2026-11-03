@@ -53,7 +53,16 @@ export default function Home() {
   const [invoices, setInvoices] = useState([]);
   const [custodyHistory, setCustodyHistory] = useState([]);
   const [showFundModal, setShowFundModal] = useState(false);
+  
+  // حالة مستقلة لنافذة التعديل لمنع مسح الكتابة أثناء التحديث الدوري
+  const [modalForm, setModalForm] = useState(DEFAULT_FUND);
   const [formData, setFormData] = useState(DEFAULT_FORM);
+
+  // فتح النافذة ونقل البيانات الحالية إليها للكتابة الحرة
+  function handleOpenModal() {
+    setModalForm({ ...custodyFund });
+    setShowFundModal(true);
+  }
 
   async function fetchCloudData() {
     try {
@@ -136,12 +145,12 @@ export default function Home() {
   async function handleSaveFund() {
     const payload = {
       id: "1",
-      custody_no: custodyFund.custodyNo,
-      recipient: custodyFund.recipient,
-      phone: custodyFund.recipientPhone,
-      owner_phone: custodyFund.ownerPhone,
-      amount: parseFloat(custodyFund.amount) || 0,
-      currency: custodyFund.currency
+      custody_no: modalForm.custodyNo || 'CUS-2026-001',
+      recipient: modalForm.recipient,
+      phone: modalForm.recipientPhone,
+      owner_phone: modalForm.ownerPhone,
+      amount: parseFloat(modalForm.amount) || 0,
+      currency: modalForm.currency || 'LYD'
     };
 
     try {
@@ -156,6 +165,7 @@ export default function Home() {
 
       if (res.ok) {
         alert("✅ تم حفظ أرقام الجوال وبيانات العهدة سحابياً بنجاح!");
+        setCustodyFund({ ...modalForm });
         setShowFundModal(false);
         fetchCloudData();
       } else {
@@ -165,11 +175,12 @@ export default function Home() {
           body: JSON.stringify(payload)
         });
         alert("✅ تم تحديث بيانات العهدة وأرقام الجوال سحابياً!");
+        setCustodyFund({ ...modalForm });
         setShowFundModal(false);
         fetchCloudData();
       }
     } catch (e) {
-      setShowFundModal(false);
+      alert("خطأ أثناء الحفظ: " + e.message);
     }
   }
 
@@ -269,7 +280,6 @@ export default function Home() {
     const itemData = data || {};
     let text = '';
     
-    // إشعار العهدة الجديدة يذهب لمسؤول العهدة (المستلم)، بينما التقرير المالي والفواتير تذهب لصاحب المنظومة/الإدارة
     let targetPhone = custodyFund.ownerPhone;
     if (type === 'NEW_CUSTODY') {
       targetPhone = custodyFund.recipientPhone || custodyFund.ownerPhone;
@@ -324,33 +334,58 @@ export default function Home() {
                 <button onClick={function() { sendWhatsAppNotification('NEW_CUSTODY'); }} style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
                   📢 إشعار عهدة
                 </button>
-                <button onClick={function() { setShowFundModal(!showFundModal); }} style={{ padding: '8px 12px', backgroundColor: '#475569', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>⚙️ تخصيص</button>
+                <button onClick={handleOpenModal} style={{ padding: '8px 12px', backgroundColor: '#475569', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>⚙️ تخصيص</button>
                 <button onClick={handleCloseAndArchive} style={{ padding: '8px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🔒 أرشفة</button>
               </div>
             </div>
 
             {showFundModal && (
-              <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', marginTop: '12px', border: '1px solid #cbd5e1' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+              <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', marginTop: '12px', border: '1px solid #cbd5e1' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '14px' }}>⚙️ تخصيص بيانات العهدة وأرقام الجوال:</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>اسم مسؤول العهدة (المندوب)</label>
-                    <input type="text" placeholder="اسم المسؤول" value={custodyFund.recipient} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: e.target.value, recipientPhone: custodyFund.recipientPhone, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>👤 اسم مسؤول العهدة (المندوب)</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: أحمد الصالحي"
+                      value={modalForm.recipient}
+                      onChange={function(e) { setModalForm({ ...modalForm, recipient: e.target.value }); }}
+                      style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>📱 جوال مسؤول العهدة (واتساب)</label>
-                    <input type="text" placeholder="مثال: 0910000000" value={custodyFund.recipientPhone} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: e.target.value, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>📱 جوال مسؤول العهدة (واتساب)</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: 0910000000"
+                      value={modalForm.recipientPhone}
+                      onChange={function(e) { setModalForm({ ...modalForm, recipientPhone: e.target.value }); }}
+                      style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>🏢 جوال صاحب المنظومة / الإدارة</label>
-                    <input type="text" placeholder="مثال: 0920000000" value={custodyFund.ownerPhone} onChange={function(e) { setCustodyFund({ amount: custodyFund.amount, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: custodyFund.recipientPhone, ownerPhone: e.target.value, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>🏢 جوال صاحب المنظومة / الإدارة</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: 0920000000"
+                      value={modalForm.ownerPhone}
+                      onChange={function(e) { setModalForm({ ...modalForm, ownerPhone: e.target.value }); }}
+                      style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>مبلغ العهدة الكلي</label>
-                    <input type="number" placeholder="مبلغ العهدة" value={custodyFund.amount} onChange={function(e) { setCustodyFund({ amount: parseFloat(e.target.value) || 0, currency: custodyFund.currency, recipient: custodyFund.recipient, recipientPhone: custodyFund.recipientPhone, ownerPhone: custodyFund.ownerPhone, custodyNo: custodyFund.custodyNo }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '2px' }} />
+                    <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>💰 مبلغ العهدة الكلي</label>
+                    <input
+                      type="number"
+                      placeholder="مبلغ العهدة"
+                      value={modalForm.amount}
+                      onChange={function(e) { setModalForm({ ...modalForm, amount: e.target.value }); }}
+                      style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
                   </div>
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '5px' }}>
-                    <button onClick={handleSaveFund} style={{ padding: '8px 16px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>💾 حفظ التعديلات سحابياً</button>
-                    <button onClick={function() { setShowFundModal(false); }} style={{ padding: '8px 12px', backgroundColor: '#94a3b8', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>إلغاء</button>
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                    <button onClick={handleSaveFund} style={{ padding: '8px 18px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>💾 حفظ التعديلات سحابياً</button>
+                    <button onClick={function() { setShowFundModal(false); }} style={{ padding: '8px 14px', backgroundColor: '#94a3b8', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>إلغاء</button>
                   </div>
                 </div>
               </div>
@@ -448,4 +483,13 @@ export default function Home() {
               <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '6px', fontSize: '11px', marginTop: '4px' }} />
             </div>
             <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-              <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor:
+              <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
+                💾 تسجيل الفاتورة وتزامنها سحابياً فوراً
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
