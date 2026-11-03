@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 
+// إعدادات الربط السحابي المباشر
 const SUPABASE_URL = '[suspicious link removed]';
 const SUPABASE_KEY = 'sb_publishable_sFxpgljPq4vJWw54LtX2iA_hQWwqdlD';
 
 const reqHeaders = {
   'apikey': SUPABASE_KEY,
-  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
   'Content-Type': 'application/json',
   'Prefer': 'return=representation'
 };
@@ -35,35 +36,37 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
+    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
     vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
     attachmentName: '', attachmentData: ''
   });
 
   const fetchCloudData = async () => {
     try {
-      const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*`, { headers: reqHeaders });
+      const invRes = await fetch(SUPABASE_URL + '/rest/v1/invoices?select=*', { headers: reqHeaders });
       if (invRes.ok) {
         const invData = await invRes.json();
-        setInvoices(invData.map(item => ({
-          id: item.id || Date.now().toString(),
-          invoiceNumber: item.invoice_number || item.invoiceNumber || '',
-          invoiceDate: item.invoice_date || item.invoiceDate || '',
-          vendor: item.vendor || '',
-          amount: parseFloat(item.amount) || 0,
-          category: item.category || 'عام',
-          attachmentData: item.attachment_data || ''
-        })));
+        setInvoices(invData.map(function(item) {
+          return {
+            id: item.id || Date.now().toString(),
+            invoiceNumber: item.invoice_number || item.invoiceNumber || '',
+            invoiceDate: item.invoice_date || item.invoiceDate || '',
+            vendor: item.vendor || '',
+            amount: parseFloat(item.amount) || 0,
+            category: item.category || 'عام',
+            attachmentData: item.attachment_data || ''
+          };
+        }));
         setSyncStatus('🟢 متصل بالسحابة ومترابط حياً بين الكمبيوتر والجوال');
       } else {
-        setSyncStatus(`⚠️ تعذر الجلب من السحابة (${invRes.status})`);
+        setSyncStatus('⚠️ تعذر الجلب من السحابة (' + invRes.status + ')');
       }
 
-      const fundRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_fund?select=*`, { headers: reqHeaders });
+      const fundRes = await fetch(SUPABASE_URL + '/rest/v1/custody_fund?select=*', { headers: reqHeaders });
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (fundData && fundData.length > 0) {
-          const first = fundData[0];
+          const first = fundData;
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: first.currency || 'LYD',
@@ -74,19 +77,21 @@ export default function Home() {
         }
       }
 
-      const histRes = await fetch(`${SUPABASE_URL}/rest/v1/custody_history?select=*`, { headers: reqHeaders });
+      const histRes = await fetch(SUPABASE_URL + '/rest/v1/custody_history?select=*', { headers: reqHeaders });
       if (histRes.ok) {
         const histData = await histRes.json();
-        setCustodyHistory(histData.map(h => ({
-          id: h.id,
-          custodyNo: h.custody_no || h.custodyNo,
-          recipient: h.recipient,
-          totalAmount: parseFloat(h.total_amount || h.totalAmount) || 0,
-          spentAmount: parseFloat(h.spent_amount || h.spentAmount) || 0,
-          remainingAmount: parseFloat(h.remaining_amount || h.remainingAmount) || 0,
-          currency: h.currency || 'LYD',
-          closedAt: h.closed_at || h.closedAt || ''
-        })));
+        setCustodyHistory(histData.map(function(h) {
+          return {
+            id: h.id,
+            custodyNo: h.custody_no || h.custodyNo,
+            recipient: h.recipient,
+            totalAmount: parseFloat(h.total_amount || h.totalAmount) || 0,
+            spentAmount: parseFloat(h.spent_amount || h.spentAmount) || 0,
+            remainingAmount: parseFloat(h.remaining_amount || h.remainingAmount) || 0,
+            currency: h.currency || 'LYD',
+            closedAt: h.closed_at || h.closedAt || ''
+          };
+        }));
       }
     } catch (err) {
       setSyncStatus('❌ فشل الاتصال بالسحابة');
@@ -96,18 +101,22 @@ export default function Home() {
   useEffect(() => {
     fetchCloudData();
     const interval = setInterval(fetchCloudData, 3000);
-    return () => clearInterval(interval);
+    return function() { clearInterval(interval); };
   }, []);
 
-  const totalSpent = invoices.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+  const totalSpent = invoices.reduce(function(acc, curr) {
+    return acc + (parseFloat(curr.amount) || 0);
+  }, 0);
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
   const handleFileChange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (file) {
+    if (e.target.files && e.target.files) {
+      const file = e.target.files;
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, attachmentName: file.name, attachmentData: reader.result }));
+      reader.onloadend = function() {
+        setFormData(function(prev) {
+          return { ...prev, attachmentName: file.name, attachmentData: reader.result };
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -129,7 +138,7 @@ export default function Home() {
     };
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/invoices`, {
+      const res = await fetch(SUPABASE_URL + '/rest/v1/invoices', {
         method: 'POST',
         headers: reqHeaders,
         body: JSON.stringify(payload)
@@ -138,7 +147,7 @@ export default function Home() {
       if (res.ok) {
         alert("✅ تم قيد الفاتورة وتزامنها سحابياً فوراً!");
         setFormData({
-          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
+          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
           vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
           attachmentName: '', attachmentData: ''
         });
@@ -152,7 +161,7 @@ export default function Home() {
   };
 
   const handleCloseAndArchive = async () => {
-    if (confirm(`هل أنت متأكد من إغلاق العهدة (${custodyFund.custodyNo}) وأرشفتها؟`)) {
+    if (confirm("هل أنت متأكد من إغلاق العهدة (" + custodyFund.custodyNo + ") وأرشفتها؟")) {
       const archivePayload = {
         id: Date.now().toString(),
         custody_no: custodyFund.custodyNo,
@@ -165,13 +174,13 @@ export default function Home() {
       };
 
       try {
-        await fetch(`${SUPABASE_URL}/rest/v1/custody_history`, {
+        await fetch(SUPABASE_URL + '/rest/v1/custody_history', {
           method: 'POST',
           headers: reqHeaders,
           body: JSON.stringify(archivePayload)
         });
 
-        await fetch(`${SUPABASE_URL}/rest/v1/invoices?id=neq.0`, { method: 'DELETE', headers: reqHeaders });
+        await fetch(SUPABASE_URL + '/rest/v1/invoices?id=neq.0', { method: 'DELETE', headers: reqHeaders });
         
         fetchCloudData();
         alert("✅ تم أرشفة العهدة بنجاح وبدء عهدة جديدة!");
@@ -181,21 +190,22 @@ export default function Home() {
     }
   };
 
-  const sendWhatsAppNotification = (type, data = {}) => {
+  const sendWhatsAppNotification = (type, data) => {
+    data = data || {};
     let text = '';
     const cleanPhone = custodyFund.phone ? custodyFund.phone.replace(/[^0-9]/g, '') : '';
 
     if (type === 'NEW_CUSTODY') {
-      text = `📢 *إشعار استلام عهدة جديدة*\n\n👤 الأخ: ${custodyFund.recipient}\n🔢 رقم العهدة: ${custodyFund.custodyNo}\n💰 القيمة: ${custodyFund.amount} ${custodyFund.currency}\n📅 التاريخ: ${new Date().toLocaleDateString('ar-LY')}`;
+      text = '📢 *إشعار استلام عهدة جديدة*\n\n👤 الأخ: ' + custodyFund.recipient + '\n🔢 رقم العهدة: ' + custodyFund.custodyNo + '\n💰 القيمة: ' + custodyFund.amount + ' ' + custodyFund.currency + '\n📅 التاريخ: ' + new Date().toLocaleDateString('ar-LY');
     } else if (type === 'FULL_REPORT') {
-      text = `📋 *تقرير تسوية العهدة (${custodyFund.custodyNo})*\n\n👤 المسؤول: ${custodyFund.recipient}\n💰 إجمالي العهدة: ${custodyFund.amount} ${custodyFund.currency}\n🧾 المصروفات: ${totalSpent} ${custodyFund.currency}\n💵 الصافي المتبقي: ${remainingBalance} ${custodyFund.currency}`;
+      text = '📋 *تقرير تسوية العهدة (' + custodyFund.custodyNo + ')*\n\n👤 المسؤول: ' + custodyFund.recipient + '\n💰 إجمالي العهدة: ' + custodyFund.amount + ' ' + custodyFund.currency + '\n🧾 المصروفات: ' + totalSpent + ' ' + custodyFund.currency + '\n💵 الصافي المتبقي: ' + remainingBalance + ' ' + custodyFund.currency;
     } else if (type === 'SINGLE_INVOICE') {
-      text = `🧾 *إشعار فاتورة رقم ${data.invoiceNumber}*\n\n🏢 المورد: ${data.vendor || 'مباشر'}\n💵 القيمة: ${data.amount} ${custodyFund.currency}\n📊 الصافي المتبقي بالعهدة: ${remainingBalance} ${custodyFund.currency}`;
+      text = '🧾 *إشعار فاتورة رقم ' + data.invoiceNumber + '*\n\n🏢 المورد: ' + (data.vendor || 'مباشر') + '\n💵 القيمة: ' + data.amount + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance + ' ' + custodyFund.currency;
     }
 
     const waLink = cleanPhone 
-      ? `[suspicious link removed]{cleanPhone}&text=${encodeURIComponent(text)}`
-      : `[suspicious link removed]{encodeURIComponent(text)}`;
+      ? '[suspicious link removed]' + cleanPhone + '&text=' + encodeURIComponent(text)
+      : '[suspicious link removed]' + encodeURIComponent(text);
 
     window.open(waLink, '_blank', 'noopener,noreferrer');
   };
@@ -218,7 +228,7 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#1e293b' }}>📋 العهدة الحالية: {custodyFund.custodyNo}</h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>المسؤول: <strong>{custodyFund.recipient}</strong> {custodyFund.phone && `(${custodyFund.phone})`}</span>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>المسؤول: <strong>{custodyFund.recipient}</strong> {custodyFund.phone && '(' + custodyFund.phone + ')'}</span>
               </div>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button onClick={() => sendWhatsAppNotification('FULL_REPORT')} style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
@@ -281,63 +291,4 @@ export default function Home() {
                       <td style={{ padding: '8px' }}>{inv.invoiceDate}</td>
                       <td style={{ padding: '8px' }}>{inv.vendor || '-'}</td>
                       <td style={{ padding: '8px', fontWeight: 'bold', color: '#dc2626' }}>{inv.amount?.toLocaleString()} {custodyFund.currency}</td>
-                      <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض الصورة</a> : 'لا يوجد'}</td>
-                      <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <button onClick={() => sendWhatsAppNotification('SINGLE_INVOICE', inv)} style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center' }}>
-                          <WhatsAppIcon size={14} /> مشاركة
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {custodyHistory.length > 0 && (
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <h4 style={{ margin: '0 0 10px 0' }}>📦 أرشيف العهد المغلقة ({custodyHistory.length})</h4>
-              {custodyHistory.map(rec => (
-                <div key={rec.id} style={{ padding: '8px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                  <span><strong>{rec.custodyNo}</strong> ({rec.recipient}) - المصروف: {rec.spentAmount} {rec.currency} - الصافي: {rec.remainingAmount} {rec.currency}</span>
-                  <span style={{ color: '#64748b' }}>📅 {rec.closedAt}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير من الجوال (تزامن سحابي)</h3>
-          <form onSubmit={handleSubmitInvoice} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>رقم الفاتورة / الإيصال</label>
-              <input type="text" placeholder="مثال: INV-1002" value={formData.invoiceNumber} onChange={e => setFormData({...formData, invoiceNumber: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>تاريخ الفاتورة</label>
-              <input type="date" value={formData.invoiceDate} onChange={e => setFormData({...formData, invoiceDate: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>اسم المورد / المحل</label>
-              <input type="text" placeholder="مثال: شركة المواد الجاهزة" value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>المبلغ الإجمالي ({custodyFund.currency})</label>
-              <input type="number" step="0.01" placeholder="مثال: 450" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>📷 تصوير / رفع الفاتورة</label>
-              <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '6px', fontSize: '11px', marginTop: '4px' }} />
-            </div>
-            <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-              <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-                💾 تسجيل الفاتورة وتزامنها سحابياً فوراً
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
+                      <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color:
