@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-const SUPABASE_URL = '[suspicious link removed]';
+const SUPABASE_URL = 'https://sFxpgljPq4vJWw54LtX2iA_hQWwqdlD.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_sFxpgljPq4vJWw54LtX2iA_hQWwqdlD';
 
 const reqHeaders = {
@@ -70,7 +70,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -121,7 +121,7 @@ export default function Home() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files;
+      const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData({
