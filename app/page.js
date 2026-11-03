@@ -12,7 +12,7 @@ const reqHeaders = {
   'Prefer': 'return=representation'
 };
 
-export default function CustodyPage() {
+export default function Home() {
   const [activeTab, setActiveTab] = useState('custody');
   const [syncStatus, setSyncStatus] = useState('جاري الاتصال بالسحابة...');
 
@@ -68,7 +68,7 @@ export default function CustodyPage() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -119,7 +119,7 @@ export default function CustodyPage() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files;
+      const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData(function(prev) {
