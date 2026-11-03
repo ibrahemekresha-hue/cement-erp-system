@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
+// إعدادات الربط السحابي المباشر مع Supabase
 const SUPABASE_URL = '[suspicious link removed]';
 const SUPABASE_KEY = 'sb_publishable_sFxpgljPq4vJWw54LtX2iA_hQWwqdlD';
 
@@ -35,11 +36,12 @@ export default function Home() {
   const [showFundModal, setShowFundModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
+    id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
     vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
     attachmentName: '', attachmentData: ''
   });
 
+  // جلب البيانات مباشرة من Supabase (بدون localStorage)
   const fetchCloudData = async () => {
     try {
       const invRes = await fetch(`${SUPABASE_URL}/rest/v1/invoices?select=*&order=created_at.desc`, { headers: reqHeaders });
@@ -64,11 +66,11 @@ export default function Home() {
         const fundData = await fundRes.json();
         if (fundData && fundData.length > 0) {
           setCustodyFund({
-            amount: parseFloat(fundData.amount) || 50000,
-            currency: fundData.currency || 'LYD',
-            recipient: fundData.recipient || 'أحمد الصالحي',
-            phone: fundData.phone || '',
-            custodyNo: fundData.custody_no || 'CUS-2026-001'
+            amount: parseFloat(fundData[0].amount) || 50000,
+            currency: fundData[0].currency || 'LYD',
+            recipient: fundData[0].recipient || 'أحمد الصالحي',
+            phone: fundData[0].phone || '',
+            custodyNo: fundData[0].custody_no || 'CUS-2026-001'
           });
         }
       }
@@ -102,7 +104,7 @@ export default function Home() {
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
   const handleFileChange = (e) => {
-    const file = e.target.files;
+    const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -137,7 +139,7 @@ export default function Home() {
       if (res.ok) {
         alert("✅ تم قيد الفاتورة وتزامنها سحابياً فوراً!");
         setFormData({
-          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T'),
+          id: '', invoiceNumber: '', invoiceDate: new Date().toISOString().split('T')[0],
           vendor: '', description: '', amount: '', category: 'مواد بناء وتجهيزات',
           attachmentName: '', attachmentData: ''
         });
@@ -193,7 +195,7 @@ export default function Home() {
     }
 
     const waLink = cleanPhone 
-      ? `[suspicious link removed]{cleanPhone}?text=${encodeURIComponent(text)}`
+      ? `[suspicious link removed]{cleanPhone}&text=${encodeURIComponent(text)}`
       : `[suspicious link removed]{encodeURIComponent(text)}`;
 
     window.open(waLink, '_blank', 'noopener,noreferrer');
