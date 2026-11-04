@@ -38,8 +38,7 @@ function cleanPhoneNumber(phone) {
   let cleaned = String(phone).replace(/[^0-9]/g, '');
   if (cleaned.startsWith('00')) {
     cleaned = cleaned.substring(2);
-  }
-  if (cleaned.startsWith('0') && cleaned.length === 10) {
+  } else if (cleaned.startsWith('0')) {
     cleaned = '218' + cleaned.substring(1);
   }
   return cleaned;
@@ -287,7 +286,7 @@ export default function Home() {
     }
   }
 
-  // إنشاء رابط الواتساب الديناميكي بدون أي استبدال لنص الرابط
+  // بناء رابط الواتساب الرسمي المضمون بدون خطأ 404
   function buildWhatsAppUrl(type, data) {
     const itemData = data || {};
     let text = '';
@@ -307,14 +306,12 @@ export default function Home() {
       text = '🧾 *إشعار فاتورة رقم ' + (itemData.invoiceNumber || '') + '*\n\n🏢 المورد: ' + (itemData.vendor || 'مباشر') + '\n💵 القيمة: ' + (itemData.amount || 0) + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     }
 
-    const p = 'https://';
-    const domain = 'wa.me/';
     const encodedText = encodeURIComponent(text);
 
     if (formattedPhone) {
-      return p + domain + formattedPhone + '?text=' + encodedText;
+      return '[suspicious link removed]' + formattedPhone + '&text=' + encodedText;
     }
-    return p + domain + '?text=' + encodedText;
+    return '[suspicious link removed]' + encodedText;
   }
 
   return (
@@ -386,11 +383,11 @@ export default function Home() {
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>📱 جوال مسؤول العهدة (واتساب)</label>
-                        <input type="text" value={modalForm.recipientPhone} onChange={function(e) { setModalForm({ ...modalForm, recipientPhone: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                        <input type="text" placeholder="مثال: 0910000000" value={modalForm.recipientPhone} onChange={function(e) { setModalForm({ ...modalForm, recipientPhone: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>🏢 جوال صاحب المنظومة / الإدارة</label>
-                        <input type="text" value={modalForm.ownerPhone} onChange={function(e) { setModalForm({ ...modalForm, ownerPhone: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                        <input type="text" placeholder="مثال: 0920000000" value={modalForm.ownerPhone} onChange={function(e) { setModalForm({ ...modalForm, ownerPhone: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
                       </div>
                       <div>
                         <label style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>💰 مبلغ العهدة الكلي</label>
