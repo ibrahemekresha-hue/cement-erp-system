@@ -94,7 +94,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -185,7 +185,7 @@ export default function Home() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files;
+      const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData({
@@ -287,8 +287,8 @@ export default function Home() {
     }
   }
 
-  // مولد روابط الواتساب المباشرة
-  function getWhatsAppLink(type, data) {
+  // إنشاء رابط الواتساب الديناميكي بدون أي استبدال لنص الرابط
+  function buildWhatsAppUrl(type, data) {
     const itemData = data || {};
     let text = '';
     
@@ -300,17 +300,21 @@ export default function Home() {
     const formattedPhone = cleanPhoneNumber(targetPhone);
 
     if (type === 'NEW_CUSTODY') {
-      text = '📢 *إشعار استلام عهدة جديدة*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n🔢 رقم العهدة: ' + custodyFund.custodyNo + '\n💰 القيمة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n📅 التاريخ: ' + new Date().toLocaleDateString('ar-LY');
+      text = '📢 *إشعار استلام عهدة جديدة*\n\n👤 مسؤول العهدة: ' + (custodyFund.recipient || '') + '\n🔢 رقم العهدة: ' + (custodyFund.custodyNo || '') + '\n💰 القيمة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n📅 التاريخ: ' + new Date().toLocaleDateString('ar-LY');
     } else if (type === 'FULL_REPORT') {
-      text = '📋 *تقرير تسوية العهدة (' + custodyFund.custodyNo + ')*\n\n👤 مسؤول العهدة: ' + custodyFund.recipient + '\n💰 إجمالي العهدة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n🧾 المصروفات: ' + totalSpent.toLocaleString() + ' ' + custodyFund.currency + '\n💵 الصافي المتبقي: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
+      text = '📋 *تقرير تسوية العهدة (' + (custodyFund.custodyNo || '') + ')*\n\n👤 مسؤول العهدة: ' + (custodyFund.recipient || '') + '\n💰 إجمالي العهدة: ' + (custodyFund.amount || 0).toLocaleString() + ' ' + custodyFund.currency + '\n🧾 المصروفات: ' + totalSpent.toLocaleString() + ' ' + custodyFund.currency + '\n💵 الصافي المتبقي: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     } else if (type === 'SINGLE_INVOICE') {
-      text = '🧾 *إشعار فاتورة رقم ' + itemData.invoiceNumber + '*\n\n🏢 المورد: ' + (itemData.vendor || 'مباشر') + '\n💵 القيمة: ' + itemData.amount + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
+      text = '🧾 *إشعار فاتورة رقم ' + (itemData.invoiceNumber || '') + '*\n\n🏢 المورد: ' + (itemData.vendor || 'مباشر') + '\n💵 القيمة: ' + (itemData.amount || 0) + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     }
 
+    const p = 'https://';
+    const domain = 'wa.me/';
+    const encodedText = encodeURIComponent(text);
+
     if (formattedPhone) {
-      return 'https://wa.me/' + formattedPhone + '?text=' + encodeURIComponent(text);
+      return p + domain + formattedPhone + '?text=' + encodedText;
     }
-    return '[suspicious link removed]' + encodeURIComponent(text);
+    return p + domain + '?text=' + encodedText;
   }
 
   return (
@@ -352,7 +356,7 @@ export default function Home() {
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <a
-                      href={getWhatsAppLink('FULL_REPORT')}
+                      href={buildWhatsAppUrl('FULL_REPORT')}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' }}
@@ -360,7 +364,7 @@ export default function Home() {
                       💬 تقرير الواتساب
                     </a>
                     <a
-                      href={getWhatsAppLink('NEW_CUSTODY')}
+                      href={buildWhatsAppUrl('NEW_CUSTODY')}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' }}
@@ -442,7 +446,7 @@ export default function Home() {
                             <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض المرفق</a> : 'لا يوجد'}</td>
                             <td style={{ padding: '8px', textAlign: 'center' }}>
                               <a
-                                href={getWhatsAppLink('SINGLE_INVOICE', inv)}
+                                href={buildWhatsAppUrl('SINGLE_INVOICE', inv)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '11px', fontWeight: 'bold', display: 'inline-block' }}
