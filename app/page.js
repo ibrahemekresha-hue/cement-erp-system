@@ -185,7 +185,7 @@ export default function Home() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
+      const file = e.target.files;
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData({
@@ -287,8 +287,8 @@ export default function Home() {
     }
   }
 
-  // دالة إرسال الواتساب المصححة بالرابط الخارجي المباشر
-  function sendWhatsAppNotification(type, data) {
+  // مولد روابط الواتساب المباشرة
+  function getWhatsAppLink(type, data) {
     const itemData = data || {};
     let text = '';
     
@@ -307,14 +307,10 @@ export default function Home() {
       text = '🧾 *إشعار فاتورة رقم ' + itemData.invoiceNumber + '*\n\n🏢 المورد: ' + (itemData.vendor || 'مباشر') + '\n💵 القيمة: ' + itemData.amount + ' ' + custodyFund.currency + '\n📊 الصافي المتبقي بالعهدة: ' + remainingBalance.toLocaleString() + ' ' + custodyFund.currency;
     }
 
-    let waUrl = '';
     if (formattedPhone) {
-      waUrl = '[suspicious link removed]' + formattedPhone + '&text=' + encodeURIComponent(text);
-    } else {
-      waUrl = '[suspicious link removed]' + encodeURIComponent(text);
+      return 'https://wa.me/' + formattedPhone + '?text=' + encodeURIComponent(text);
     }
-
-    window.open(waUrl, '_blank');
+    return '[suspicious link removed]' + encodeURIComponent(text);
   }
 
   return (
@@ -355,12 +351,22 @@ export default function Home() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <button onClick={function() { sendWhatsAppNotification('FULL_REPORT'); }} style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                    <a
+                      href={getWhatsAppLink('FULL_REPORT')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: '8px 12px', backgroundColor: '#25D366', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' }}
+                    >
                       💬 تقرير الواتساب
-                    </button>
-                    <button onClick={function() { sendWhatsAppNotification('NEW_CUSTODY'); }} style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                    </a>
+                    <a
+                      href={getWhatsAppLink('NEW_CUSTODY')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: '8px 12px', backgroundColor: '#0284c7', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' }}
+                    >
                       📢 إشعار عهدة
-                    </button>
+                    </a>
                     <button onClick={handleOpenModal} style={{ padding: '8px 12px', backgroundColor: '#475569', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>⚙️ تخصيص</button>
                     <button onClick={handleCloseAndArchive} style={{ padding: '8px 12px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>🔒 أرشفة</button>
                   </div>
@@ -435,9 +441,14 @@ export default function Home() {
                             <td style={{ padding: '8px', fontWeight: 'bold', color: '#dc2626' }}>{inv.amount ? inv.amount.toLocaleString() : '0'} {custodyFund.currency}</td>
                             <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض المرفق</a> : 'لا يوجد'}</td>
                             <td style={{ padding: '8px', textAlign: 'center' }}>
-                              <button onClick={function() { sendWhatsAppNotification('SINGLE_INVOICE', inv); }} style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                              <a
+                                href={getWhatsAppLink('SINGLE_INVOICE', inv)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ padding: '4px 8px', backgroundColor: '#25D366', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '11px', fontWeight: 'bold', display: 'inline-block' }}
+                              >
                                 💬 مشاركة
-                              </button>
+                              </a>
                             </td>
                           </tr>
                         );
