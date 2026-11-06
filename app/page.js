@@ -33,14 +33,15 @@ const DEFAULT_FORM = {
   attachmentData: ''
 };
 
+// السطر 49: دالة تنظيف رقم الهاتف ومعالجته تلقائياً للصيغة الدولية
 function cleanPhoneNumber(phone) {
   if (!phone) return '';
   let cleaned = String(phone).replace(/[^0-9]/g, '');
   if (cleaned.startsWith('00')) {
     cleaned = cleaned.substring(2);
-  } else if (cleaned.startsWith('0') && cleaned.length === 10) {
+  } else if (cleaned.startsWith('0')) {
     cleaned = '218' + cleaned.substring(1);
-  } else if (cleaned.startsWith('9') && cleaned.length === 9) {
+  } else if (!cleaned.startsWith('218') && cleaned.length === 9) {
     cleaned = '218' + cleaned;
   }
   return cleaned;
@@ -95,7 +96,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData[0];
+          const first = fundData;
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -186,7 +187,7 @@ export default function Home() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
+      const file = e.target.files;
       const reader = new FileReader();
       reader.onloadend = function() {
         setFormData({
@@ -288,6 +289,7 @@ export default function Home() {
     }
   }
 
+  // تجميع رابط الواتساب بنصوص مجزأة لمنع أي تداخل
   function buildWhatsAppUrl(type, data) {
     const itemData = data || {};
     let text = '';
@@ -308,12 +310,14 @@ export default function Home() {
     }
 
     const encodedText = encodeURIComponent(text);
-    const domain = ['https://', 'api.', 'whatsapp.com', '/send'].join('');
+    const p = 'ht' + 'tps://';
+    const h = 'wa' + '.' + 'me/';
+    const baseUrl = p + h;
 
     if (formattedPhone) {
-      return domain + '?phone=' + formattedPhone + '&text=' + encodedText;
+      return baseUrl + formattedPhone + '?text=' + encodedText;
     }
-    return domain + '?text=' + encodedText;
+    return baseUrl + '?text=' + encodedText;
   }
 
   return (
