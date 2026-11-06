@@ -33,7 +33,7 @@ const DEFAULT_FORM = {
   attachmentData: ''
 };
 
-// السطر 49: دالة تنظيف رقم الهاتف ومعالجته تلقائياً للصيغة الدولية
+// السطر 49: تنظيف رقم الجوال وتحويله آلياً للصيغة الدولية
 function cleanPhoneNumber(phone) {
   if (!phone) return '';
   let cleaned = String(phone).replace(/[^0-9]/g, '');
@@ -82,7 +82,7 @@ export default function Home() {
               vendor: String(item.vendor || ''),
               amount: parseFloat(item.amount) || 0,
               category: String(item.category || 'عام'),
-              attachmentData: String(item.attachment_data || '')
+              attachmentData: String(item.attachment_data || item.attachmentData || item.attachment_url || '')
             };
           });
           setInvoices(mapped);
@@ -96,7 +96,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -185,16 +185,67 @@ export default function Home() {
     }
   }
 
+  // التقاط وقراءة صورة الفاتورة مع ضغط تلقائي وحفظ آمن
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files;
+      const file = e.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
-      reader.onloadend = function() {
-        setFormData({
-          ...formData,
-          attachmentName: file.name,
-          attachmentData: String(reader.result || '')
-        });
+      reader.onload = function(event) {
+        const rawResult = event.target.result;
+        
+        if (file.type && file.type.startsWith('image/')) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 1000;
+
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            setFormData(function(prev) {
+              return {
+                ...prev,
+                attachmentName: file.name,
+                attachmentData: compressedBase64
+              };
+            });
+          };
+          img.onerror = function() {
+            setFormData(function(prev) {
+              return {
+                ...prev,
+                attachmentName: file.name,
+                attachmentData: String(rawResult || '')
+              };
+            });
+          };
+          img.src = rawResult;
+        } else {
+          setFormData(function(prev) {
+            return {
+              ...prev,
+              attachmentName: file.name,
+              attachmentData: String(rawResult || '')
+            };
+          });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -226,7 +277,7 @@ export default function Home() {
       });
 
       if (res.ok) {
-        alert("✅ تم قيد الفاتورة وتزامنها سحابياً بنجاح!");
+        alert("✅ تم قيد الفاتورة وتزامن مرفقها سحابياً بنجاح!");
         setFormData(DEFAULT_FORM);
         fetchCloudData();
       } else {
@@ -289,7 +340,6 @@ export default function Home() {
     }
   }
 
-  // تجميع رابط الواتساب بنصوص مجزأة لمنع أي تداخل
   function buildWhatsAppUrl(type, data) {
     const itemData = data || {};
     let text = '';
@@ -446,7 +496,13 @@ export default function Home() {
                             <td style={{ padding: '8px' }}>{inv.invoiceDate}</td>
                             <td style={{ padding: '8px' }}>{inv.vendor || '-'}</td>
                             <td style={{ padding: '8px', fontWeight: 'bold', color: '#dc2626' }}>{inv.amount ? inv.amount.toLocaleString() : '0'} {custodyFund.currency}</td>
-                            <td style={{ padding: '8px' }}>{inv.attachmentData ? <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>📎 عرض المرفق</a> : 'لا يوجد'}</td>
+                            <td style={{ padding: '8px' }}>
+                              {inv.attachmentData && inv.attachmentData.length > 10 ? (
+                                <a href={inv.attachmentData} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontWeight: 'bold' }}>📎 عرض الفاتورة</a>
+                              ) : (
+                                <span style={{ color: '#94a3b8' }}>لا يوجد</span>
+                              )}
+                            </td>
                             <td style={{ padding: '8px', textAlign: 'center' }}>
                               <a
                                 href={buildWhatsAppUrl('SINGLE_INVOICE', inv)}
@@ -558,6 +614,11 @@ export default function Home() {
             <div>
               <label style={{ fontSize: '12px', fontWeight: 'bold' }}>📷 تصوير / رفع صورة الفاتورة</label>
               <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '8px', fontSize: '12px', marginTop: '4px' }} />
+              {formData.attachmentData && (
+                <div style={{ marginTop: '6px', fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>
+                  ✅ تم التقاط/إرفاق الصورة بنجاح وتجهيزها للحفظ!
+                </div>
+              )}
             </div>
             <div style={{ marginTop: '10px' }}>
               <button type="submit" style={{ width: '100%', padding: '14px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
