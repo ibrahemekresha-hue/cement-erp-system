@@ -68,8 +68,16 @@ export default function Home() {
   const [invoices, setInvoices] = useState([]);
   const [custodyHistory, setCustodyHistory] = useState([]);
   
+  // نموذج المرتبات المعدل بالحقول التفصيلية الجديدة
   const [advances, setAdvances] = useState([]);
-  const [advanceForm, setAdvanceForm] = useState({ employee: '', amount: '', date: '2026-11-04', type: 'سلفة', notes: '' });
+  const [advanceForm, setAdvanceForm] = useState({ 
+    employee: '', 
+    basicSalary: '', 
+    bonus: '', 
+    deductions: '', 
+    date: '2026-11-04', 
+    notes: '' 
+  });
 
   const [showFundModal, setShowFundModal] = useState(false);
   const [modalForm, setModalForm] = useState(DEFAULT_FUND);
@@ -152,6 +160,9 @@ export default function Home() {
   const totalSpent = invoices.reduce(function(acc, curr) { return acc + (parseFloat(curr.amount) || 0); }, 0);
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
+  // الحساب الآلي للمبلغ المستحق
+  const calculatedNet = (parseFloat(advanceForm.basicSalary) || 0) + (parseFloat(advanceForm.bonus) || 0) - (parseFloat(advanceForm.deductions) || 0);
+
   async function handleSaveFund() {
     const payload = {
       id: "1",
@@ -193,21 +204,29 @@ export default function Home() {
 
   function handleAddAdvance(e) {
     e.preventDefault();
-    if (!advanceForm.employee || !advanceForm.amount) {
-      alert("يرجى كتابة اسم الموظف والمبلغ!");
+    if (!advanceForm.employee) {
+      alert("يرجى كتابة اسم الموظف!");
       return;
     }
+    const basic = parseFloat(advanceForm.basicSalary) || 0;
+    const bonusVal = parseFloat(advanceForm.bonus) || 0;
+    const dedVal = parseFloat(advanceForm.deductions) || 0;
+    const netVal = basic + bonusVal - dedVal;
+
     const newAdv = {
       id: String(Date.now()),
       employee: advanceForm.employee,
-      amount: parseFloat(advanceForm.amount),
+      basicSalary: basic,
+      bonus: bonusVal,
+      deductions: dedVal,
+      netAmount: netVal,
       date: advanceForm.date,
-      type: advanceForm.type || 'سلفة',
       notes: advanceForm.notes
     };
+
     setAdvances([newAdv, ...advances]);
-    setAdvanceForm({ employee: '', amount: '', date: '2026-11-04', type: 'سلفة', notes: '' });
-    alert("✅ تم قيد السلفة / الإضافي بنجاح!");
+    setAdvanceForm({ employee: '', basicSalary: '', bonus: '', deductions: '', date: '2026-11-04', notes: '' });
+    alert("✅ تم قيد استحقاق الراتب وتفاصيله بنجاح!");
   }
 
   async function handleCloseAndArchive() {
@@ -270,7 +289,7 @@ export default function Home() {
 
   function handleFileChange(e) {
     if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files;
+      const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
@@ -354,7 +373,7 @@ export default function Home() {
               📋 تسوية العهدة والمصروفات
             </button>
             <button onClick={function() { setAdminSubTab('salaries_view'); }} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold', backgroundColor: adminSubTab === 'salaries_view' ? '#0f172a' : '#cbd5e1', color: adminSubTab === 'salaries_view' ? 'white' : '#334155' }}>
-              💵 إدارة المرتبات والسلف والإضافي
+              💵 إدارة المرتبات والاستحقاقات
             </button>
           </div>
 
@@ -376,7 +395,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* نافذة تخصيص عهدة جديدة وتحديد البيانات */}
                 {showFundModal && (
                   <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', marginTop: '12px', border: '1px solid #cbd5e1' }}>
                     <h4 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '14px' }}>⚙️ تخصيص بيانات عهدة جديدة وأرقام الجوال:</h4>
@@ -425,7 +443,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* جدول الفواتير وقيدها المباشر */}
+              {/* جدول الفواتير */}
               <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', marginBottom: '15px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
                   <thead style={{ backgroundColor: '#f1f5f9' }}>
@@ -484,63 +502,80 @@ export default function Home() {
               )}
             </div>
           ) : (
-            /* 💵 شاشة إدارة المرتبات والسلف والإضافي */
+            /* 💵 الشاشة المحدثة: إدارة المرتبات والاستحقاقات بالحقول الخمسة */
             <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-              <h3 style={{ margin: '0 0 12px 0', color: '#0f172a' }}>💵 سجل المرتبات والسلف وساعات الإضافي</h3>
-              
-              <form onSubmit={handleAddAdvance} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+              <h3 style={{ margin: '0 0 6px 0', color: '#0f172a' }}>💵 كشف المرتبات، الإضافي، والخصومات (استحقاق العمالة)</h3>
+              <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#64748b' }}>
+                احتساب المرتب الأساسي، المكافآت/الإضافي، والاستقطاعات لحساب المبلغ الصافي المستحق تلقائياً.
+              </p>
+
+              <form onSubmit={handleAddAdvance} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>اسم الموظف / العمالة</label>
-                  <input type="text" placeholder="مثال: علي سالم / عمال اللحام" value={advanceForm.employee} onChange={function(e) { setAdvanceForm({ ...advanceForm, employee: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#334155' }}>👤 اسم الموظف / المستفيد</label>
+                  <input type="text" placeholder="مثال: علي سالم" value={advanceForm.employee} onChange={function(e) { setAdvanceForm({ ...advanceForm, employee: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>النوع</label>
-                  <select value={advanceForm.type} onChange={function(e) { setAdvanceForm({ ...advanceForm, type: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
-                    <option value="سلفة">سلفة شخصية</option>
-                    <option value="إضافي">أجر إضافي / ساعات</option>
-                    <option value="راتب">راتب / أجر شهري</option>
-                  </select>
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#334155' }}>💵 المرتب الأساسي ({custodyFund.currency})</label>
+                  <input type="number" placeholder="مثال: 3000" value={advanceForm.basicSalary} onChange={function(e) { setAdvanceForm({ ...advanceForm, basicSalary: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>المبلغ ({custodyFund.currency})</label>
-                  <input type="number" placeholder="مثال: 500" value={advanceForm.amount} onChange={function(e) { setAdvanceForm({ ...advanceForm, amount: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#16a34a' }}>➕ إضافي / مكافأة عمل</label>
+                  <input type="number" placeholder="مثال: 500" value={advanceForm.bonus} onChange={function(e) { setAdvanceForm({ ...advanceForm, bonus: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold' }}>التاريخ</label>
-                  <input type="date" value={advanceForm.date} onChange={function(e) { setAdvanceForm({ ...advanceForm, date: e.target.value }); }} style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#dc2626' }}>➖ قيمة الخصم / الاستقطاع</label>
+                  <input type="number" placeholder="مثال: 200" value={advanceForm.deductions} onChange={function(e) { setAdvanceForm({ ...advanceForm, deductions: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} />
                 </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <button type="submit" style={{ padding: '8px 16px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>➕ قيد المبلغ</button>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#2563eb' }}>📊 المبلغ المستحق (الصافي)</label>
+                  <input type="number" value={calculatedNet} readOnly style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#eff6ff', fontWeight: 'bold', color: '#1d4ed8', marginTop: '3px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#334155' }}>📅 تاريخ الاستحقاق</label>
+                  <input type="date" value={advanceForm.date} onChange={function(e) { setAdvanceForm({ ...advanceForm, date: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} />
+                </div>
+                <div style={{ gridColumn: '1 / -1', marginTop: '5px' }}>
+                  <button type="submit" style={{ padding: '9px 18px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
+                    ➕ قيد استحقاق الراتب والتحليلات
+                  </button>
                 </div>
               </form>
 
-              <h4 style={{ margin: '15px 0 8px 0', fontSize: '14px' }}>جدول المرتبات والسلف والإضافي المقيد:</h4>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
-                <thead style={{ backgroundColor: '#f1f5f9' }}>
-                  <tr>
-                    <th style={{ padding: '8px' }}>الموظف / المستفيد</th>
-                    <th style={{ padding: '8px' }}>النوع</th>
-                    <th style={{ padding: '8px' }}>التاريخ</th>
-                    <th style={{ padding: '8px' }}>المبلغ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {advances.length === 0 ? (
-                    <tr><td colSpan="4" style={{ padding: '12px', textAlign: 'center', color: '#94a3b8' }}>لا توجد سلف أو مرتبات مقيدة حتى الآن</td></tr>
-                  ) : (
-                    advances.map(function(adv) {
-                      return (
-                        <tr key={adv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{adv.employee}</td>
-                          <td style={{ padding: '8px', color: '#0284c7', fontWeight: 'bold' }}>{adv.type || 'سلفة'}</td>
-                          <td style={{ padding: '8px' }}>{adv.date}</td>
-                          <td style={{ padding: '8px', color: '#dc2626', fontWeight: 'bold' }}>{adv.amount.toLocaleString()} {custodyFund.currency}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+              <h4 style={{ margin: '15px 0 8px 0', fontSize: '14px', color: '#1e293b' }}>جدول كشف المرتبات والاستحقاقات المقيدة:</h4>
+              <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
+                  <thead style={{ backgroundColor: '#f1f5f9' }}>
+                    <tr>
+                      <th style={{ padding: '8px' }}>الموظف / المستفيد</th>
+                      <th style={{ padding: '8px' }}>المرتب الأساسي</th>
+                      <th style={{ padding: '8px' }}>الإضافي / المكافأة</th>
+                      <th style={{ padding: '8px' }}>الخصوم والخصم</th>
+                      <th style={{ padding: '8px' }}>الصافي المستحق</th>
+                      <th style={{ padding: '8px' }}>التاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {advances.length === 0 ? (
+                      <tr><td colSpan="6" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد مرتبات أو استحقاقات مقيدة حتى الآن</td></tr>
+                    ) : (
+                      advances.map(function(adv) {
+                        return (
+                          <tr key={adv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{adv.employee}</td>
+                            <td style={{ padding: '8px' }}>{(adv.basicSalary || 0).toLocaleString()} {custodyFund.currency}</td>
+                            <td style={{ padding: '8px', color: '#16a34a', fontWeight: 'bold' }}>+{(adv.bonus || 0).toLocaleString()} {custodyFund.currency}</td>
+                            <td style={{ padding: '8px', color: '#dc2626' }}>-{(adv.deductions || 0).toLocaleString()} {custodyFund.currency}</td>
+                            <td style={{ padding: '8px', color: '#2563eb', fontWeight: 'bold', backgroundColor: '#f0f9ff' }}>
+                              {(adv.netAmount || 0).toLocaleString()} {custodyFund.currency}
+                            </td>
+                            <td style={{ padding: '8px', color: '#64748b' }}>{adv.date}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -558,7 +593,7 @@ export default function Home() {
             {INITIAL_CWIP_COMPONENTS.map(function(comp) {
               const compInvoices = invoices.filter(function(i) { return i.cwipComponent === comp.name; });
               const spentLyd = compInvoices.reduce(function(acc, c) { return acc + (c.amount || 0); }, 0);
-              const budgetLyd = comp.budgetUsd * 8.50; // سعر الصرف التقديري 8.50 د.ل/دولار
+              const budgetLyd = comp.budgetUsd * 8.50;
               const progressPct = Math.min(100, Math.round((spentLyd / budgetLyd) * 100));
 
               return (
@@ -574,7 +609,6 @@ export default function Home() {
                     المصروف الإجمالي: <strong style={{ color: '#0891b2' }}>{spentLyd.toLocaleString()} LYD</strong>
                   </div>
 
-                  {/* شريط نسبة التجهيز والإنجاز */}
                   <div style={{ backgroundColor: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' }}>
                     <div style={{ backgroundColor: progressPct > 80 ? '#ef4444' : '#0891b2', width: progressPct + '%', height: '100%' }}></div>
                   </div>
