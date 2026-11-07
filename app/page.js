@@ -68,7 +68,7 @@ export default function Home() {
   const [invoices, setInvoices] = useState([]);
   const [custodyHistory, setCustodyHistory] = useState([]);
   
-  // نموذج المرتبات المعدل بالحقول التفصيلية الجديدة
+  // سجل المرتبات والاستحقاقات
   const [advances, setAdvances] = useState([]);
   const [advanceForm, setAdvanceForm] = useState({ 
     employee: '', 
@@ -81,7 +81,6 @@ export default function Home() {
 
   const [showFundModal, setShowFundModal] = useState(false);
   const [modalForm, setModalForm] = useState(DEFAULT_FUND);
-  const [formData, setFormData] = useState(DEFAULT_FORM);
 
   function handleOpenModal() {
     setModalForm({ ...custodyFund });
@@ -107,7 +106,7 @@ export default function Home() {
             };
           });
           setInvoices(mapped);
-          setSyncStatus('🟢 متصل بالسحابة ومترابط حياً بين الكمبيوتر والجوال');
+          setSyncStatus('🟢 متصل بالسحابة (تحكم إداري مباشر)');
         }
       }
 
@@ -115,7 +114,7 @@ export default function Home() {
       if (fundRes.ok) {
         const fundData = await fundRes.json();
         if (Array.isArray(fundData) && fundData.length > 0) {
-          const first = fundData;
+          const first = fundData[0];
           setCustodyFund({
             amount: parseFloat(first.amount) || 50000,
             currency: String(first.currency || 'LYD'),
@@ -160,7 +159,7 @@ export default function Home() {
   const totalSpent = invoices.reduce(function(acc, curr) { return acc + (parseFloat(curr.amount) || 0); }, 0);
   const remainingBalance = (parseFloat(custodyFund.amount) || 0) - totalSpent;
 
-  // الحساب الآلي للمبلغ المستحق
+  // الحساب الآلي للصافي المستحق
   const calculatedNet = (parseFloat(advanceForm.basicSalary) || 0) + (parseFloat(advanceForm.bonus) || 0) - (parseFloat(advanceForm.deductions) || 0);
 
   async function handleSaveFund() {
@@ -287,81 +286,20 @@ export default function Home() {
     return baseUrl + '?text=' + encodedText;
   }
 
-  function handleFileChange(e) {
-    if (e && e.target && e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const rawResult = event.target.result;
-        setFormData(function(prev) {
-          return {
-            ...prev,
-            attachmentName: file.name,
-            attachmentData: String(rawResult || '')
-          };
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
-  async function handleSubmitInvoice(e) {
-    e.preventDefault();
-    if (!formData.invoiceNumber || !formData.amount) {
-      alert("يرجى إدخال رقم الفاتورة والمبلغ!");
-      return;
-    }
-
-    const newId = String(Date.now());
-    const payload = {
-      id: newId,
-      invoice_number: formData.invoiceNumber,
-      invoice_date: formData.invoiceDate,
-      vendor: formData.vendor,
-      amount: parseFloat(formData.amount),
-      category: formData.category,
-      cwip_component: formData.cwipComponent,
-      attachment_data: formData.attachmentData || ''
-    };
-
-    try {
-      const res = await fetch(SUPABASE_URL + '/rest/v1/invoices', {
-        method: 'POST',
-        headers: reqHeaders,
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        alert("✅ تم قيد الفاتورة وتزامنها سحابياً بنجاح!");
-        setFormData(DEFAULT_FORM);
-        fetchCloudData();
-      } else {
-        alert("⚠️ تعذر قيد الفاتورة في السحابة.");
-      }
-    } catch (err) {
-      alert("خطأ اتصال: " + err.message);
-    }
-  }
-
   return (
     <div style={{ padding: '15px', fontFamily: 'system-ui, sans-serif', direction: 'rtl', maxWidth: '1050px', margin: '0 auto' }}>
       <header style={{ backgroundColor: '#0f172a', color: 'white', padding: '18px', borderRadius: '12px', marginBottom: '15px', textAlign: 'center' }}>
-        <h1 style={{ margin: 0, fontSize: '20px' }}>🏢 منظومة العهدة المالية والأصول قيد التنفيذ (CWIP)</h1>
+        <h1 style={{ margin: 0, fontSize: '20px' }}>🏢 لوحة الإدارة المالية والأصول قيد التنفيذ (CWIP)</h1>
         <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#38bdf8', fontWeight: 'bold' }}>{syncStatus}</p>
       </header>
 
-      {/* الشريط الرئيسي للتنقل */}
+      {/* الشريط الرئيسي للتنقل والإدارة */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
         <button onClick={function() { setActiveTab('custody'); }} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'custody' ? '#2563eb' : '#e2e8f0', color: activeTab === 'custody' ? 'white' : '#1e293b' }}>
           🏛️ لوحة التحكم والإدارة المالية
         </button>
         <button onClick={function() { setActiveTab('cwip'); }} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'cwip' ? '#0891b2' : '#e2e8f0', color: activeTab === 'cwip' ? 'white' : '#1e293b' }}>
           🏭 تبويب الأصول قيد التنفيذ (CWIP)
-        </button>
-        <button onClick={function() { setActiveTab('delegate'); }} style={{ flex: 1, padding: '12px', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: activeTab === 'delegate' ? '#16a34a' : '#e2e8f0', color: activeTab === 'delegate' ? 'white' : '#1e293b' }}>
-          📱 واجهة المندوب (الجوال)
         </button>
       </div>
 
@@ -443,7 +381,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* جدول الفواتير */}
+              {/* جدول الفواتير المقيدة آلياً عبر الواتساب والموقع */}
               <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', marginBottom: '15px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
                   <thead style={{ backgroundColor: '#f1f5f9' }}>
@@ -458,7 +396,7 @@ export default function Home() {
                   </thead>
                   <tbody>
                     {invoices.length === 0 ? (
-                      <tr><td colSpan="6" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فواتير حية حتى الآن</td></tr>
+                      <tr><td colSpan="6" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد فواتير مقيدة حتى الآن</td></tr>
                     ) : (
                       invoices.map(function(inv) {
                         return (
@@ -502,7 +440,7 @@ export default function Home() {
               )}
             </div>
           ) : (
-            /* 💵 الشاشة المحدثة: إدارة المرتبات والاستحقاقات بالحقول الخمسة */
+            /* 💵 كشف المرتبات والاستحقاقات */
             <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
               <h3 style={{ margin: '0 0 6px 0', color: '#0f172a' }}>💵 كشف المرتبات، الإضافي، والخصومات (استحقاق العمالة)</h3>
               <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#64748b' }}>
@@ -528,142 +466,4 @@ export default function Home() {
                 </div>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#2563eb' }}>📊 المبلغ المستحق (الصافي)</label>
-                  <input type="number" value={calculatedNet} readOnly style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#eff6ff', fontWeight: 'bold', color: '#1d4ed8', marginTop: '3px' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 'bold', color: '#334155' }}>📅 تاريخ الاستحقاق</label>
-                  <input type="date" value={advanceForm.date} onChange={function(e) { setAdvanceForm({ ...advanceForm, date: e.target.value }); }} style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '3px' }} />
-                </div>
-                <div style={{ gridColumn: '1 / -1', marginTop: '5px' }}>
-                  <button type="submit" style={{ padding: '9px 18px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
-                    ➕ قيد استحقاق الراتب والتحليلات
-                  </button>
-                </div>
-              </form>
-
-              <h4 style={{ margin: '15px 0 8px 0', fontSize: '14px', color: '#1e293b' }}>جدول كشف المرتبات والاستحقاقات المقيدة:</h4>
-              <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '13px' }}>
-                  <thead style={{ backgroundColor: '#f1f5f9' }}>
-                    <tr>
-                      <th style={{ padding: '8px' }}>الموظف / المستفيد</th>
-                      <th style={{ padding: '8px' }}>المرتب الأساسي</th>
-                      <th style={{ padding: '8px' }}>الإضافي / المكافأة</th>
-                      <th style={{ padding: '8px' }}>الخصوم والخصم</th>
-                      <th style={{ padding: '8px' }}>الصافي المستحق</th>
-                      <th style={{ padding: '8px' }}>التاريخ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {advances.length === 0 ? (
-                      <tr><td colSpan="6" style={{ padding: '15px', textAlign: 'center', color: '#94a3b8' }}>لا توجد مرتبات أو استحقاقات مقيدة حتى الآن</td></tr>
-                    ) : (
-                      advances.map(function(adv) {
-                        return (
-                          <tr key={adv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '8px', fontWeight: 'bold' }}>{adv.employee}</td>
-                            <td style={{ padding: '8px' }}>{(adv.basicSalary || 0).toLocaleString()} {custodyFund.currency}</td>
-                            <td style={{ padding: '8px', color: '#16a34a', fontWeight: 'bold' }}>+{(adv.bonus || 0).toLocaleString()} {custodyFund.currency}</td>
-                            <td style={{ padding: '8px', color: '#dc2626' }}>-{(adv.deductions || 0).toLocaleString()} {custodyFund.currency}</td>
-                            <td style={{ padding: '8px', color: '#2563eb', fontWeight: 'bold', backgroundColor: '#f0f9ff' }}>
-                              {(adv.netAmount || 0).toLocaleString()} {custodyFund.currency}
-                            </td>
-                            <td style={{ padding: '8px', color: '#64748b' }}>{adv.date}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 🏭 تبويب الأصول قيد التنفيذ (CWIP Module) */}
-      {activeTab === 'cwip' && (
-        <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-          <h3 style={{ margin: '0 0 8px 0', color: '#0891b2' }}>🏭 متابعة تكاليف ونسب إنجاز أصول المصنع قيد التنفيذ (IAS 16)</h3>
-          <p style={{ margin: '0 0 15px 0', fontSize: '12px', color: '#64748b' }}>
-            توزيع وتجميع المصروفات المباشرة سحابياً على مكونات المصنع التسعة واحتساب نسب التوثيق والتجهيز للرأسمالة.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
-            {INITIAL_CWIP_COMPONENTS.map(function(comp) {
-              const compInvoices = invoices.filter(function(i) { return i.cwipComponent === comp.name; });
-              const spentLyd = compInvoices.reduce(function(acc, c) { return acc + (c.amount || 0); }, 0);
-              const budgetLyd = comp.budgetUsd * 8.50;
-              const progressPct = Math.min(100, Math.round((spentLyd / budgetLyd) * 100));
-
-              return (
-                <div key={comp.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', backgroundColor: '#f8fafc' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <h4 style={{ margin: 0, fontSize: '13px', color: '#0f172a' }}>{comp.name}</h4>
-                    <span style={{ fontSize: '11px', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                      عمر الأصل: {comp.UsefulLife} سنة
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px' }}>
-                    المصروف الإجمالي: <strong style={{ color: '#0891b2' }}>{spentLyd.toLocaleString()} LYD</strong>
-                  </div>
-
-                  <div style={{ backgroundColor: '#e2e8f0', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '6px' }}>
-                    <div style={{ backgroundColor: progressPct > 80 ? '#ef4444' : '#0891b2', width: progressPct + '%', height: '100%' }}></div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-                    <span>نسبة التكلفة: {progressPct}%</span>
-                    <span>الميزانية: {budgetLyd.toLocaleString()} LYD</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* واجهة المندوب بالجوال */}
-      {activeTab === 'delegate' && (
-        <div style={{ backgroundColor: 'white', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-          <h3 style={{ margin: '0 0 12px 0', color: '#16a34a' }}>📱 واجهة تسجيل الفواتير المباشرة من الجوال</h3>
-          <form onSubmit={handleSubmitInvoice} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>رقم الفاتورة / الإيصال</label>
-              <input type="text" placeholder="مثال: INV-1002" value={formData.invoiceNumber} onChange={function(e) { setFormData({ ...formData, invoiceNumber: e.target.value }); }} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>تاريخ الفاتورة</label>
-              <input type="date" value={formData.invoiceDate} onChange={function(e) { setFormData({ ...formData, invoiceDate: e.target.value }); }} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>اسم المورد / المحل</label>
-              <input type="text" placeholder="مثال: شركة المواد الجاهزة" value={formData.vendor} onChange={function(e) { setFormData({ ...formData, vendor: e.target.value }); }} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>المكون قيد التنفيذ (CWIP)</label>
-              <select value={formData.cwipComponent} onChange={function(e) { setFormData({ ...formData, cwipComponent: e.target.value }); }} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', backgroundColor: 'white' }}>
-                {INITIAL_CWIP_COMPONENTS.map(function(c) {
-                  return <option key={c.id} value={c.name}>{c.name}</option>;
-                })}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>المبلغ الإجمالي ({custodyFund.currency})</label>
-              <input type="number" step="0.01" placeholder="مثال: 450" value={formData.amount} onChange={function(e) { setFormData({ ...formData, amount: e.target.value }); }} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} required />
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 'bold' }}>📷 تصوير / رفع صورة الفاتورة</label>
-              <input type="file" accept="image/*,.pdf" onChange={handleFileChange} style={{ width: '100%', padding: '8px', fontSize: '12px', marginTop: '4px' }} />
-            </div>
-            <div style={{ marginTop: '10px' }}>
-              <button type="submit" style={{ width: '100%', padding: '14px', backgroundColor: '#16a34a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
-                💾 تسجيل الفاتورة وإرسالها سحابياً فوراً
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
-  );
-}
+                  <input type="number" value={calculatedNet} readOnly style={{ width: '100%', padding: '7px', borderRadius: '4px', border: '1px
