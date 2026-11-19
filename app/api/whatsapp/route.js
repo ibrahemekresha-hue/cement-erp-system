@@ -20,23 +20,19 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-
-    // استخراج الرسالة الأولى بدقة من هيكل Meta
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
     if (message) {
-      const from = message.from; // رقم هاتف المرسل
-      const text = message.text?.body || ''; // نص الرسالة
+      const from = message.from;
+      const text = message.text?.body || '';
 
       const waToken = process.env.WHATSAPP_TOKEN;
       const phoneId = process.env.WHATSAPP_PHONE_ID;
 
-      console.log(`[WhatsApp API] Message received from ${from}: "${text}"`);
-
       if (waToken && phoneId) {
-        const graphUrl = `[suspicious link removed]${phoneId}/messages`;
+        const graphUrl = `[suspicious link removed]{phoneId}/messages`;
         
-        const res = await fetch(graphUrl, {
+        await fetch(graphUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${waToken}`,
@@ -49,11 +45,6 @@ export async function POST(request) {
             text: { body: `أهلاً بك في منظومة مصنع الأسمنت، تم استلام طلبك: "${text}"` },
           }),
         });
-
-        const resData = await res.json();
-        console.log("=== META RESPONSE ===", JSON.stringify(resData));
-      } else {
-        console.error("[WhatsApp API] Missing WHATSAPP_TOKEN or WHATSAPP_PHONE_ID!");
       }
     }
 
